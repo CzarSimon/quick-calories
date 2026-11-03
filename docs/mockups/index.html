@@ -1,0 +1,401 @@
+<title>Quick Calories Mockup</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one phone-sized app column (390px) framed on wide screens, edge-to-edge on phones; note column beside it on desktop. Carbs = the "fuel" accent. */
+:root{
+  --bg:#E9EDF1; --surface:#FFFFFF; --surface-2:#F4F6F8; --fg:#13202B; --muted:#5A6A79; --line:#D5DCE3;
+  --carb:#D9800F; --carb-soft:#F6DDB8; --protein:#237A86; --protein-soft:#C3E3E7; --fat:#8E62A8; --fat-soft:#E3D4EC;
+  --ok:#2C7D52; --over:#BE3B33; --over-soft:#F6D9D6; --frame:#1B2530;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1318; --surface:#162029; --surface-2:#1C2833; --fg:#E6ECF1; --muted:#93A3B1; --line:#273541;
+  --carb:#F0A040; --carb-soft:#4A3417; --protein:#52B5C1; --protein-soft:#173B41; --fat:#B993CF; --fat-soft:#352841;
+  --ok:#55B583; --over:#E96B62; --over-soft:#47201D; --frame:#05080B; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1318; --surface:#162029; --surface-2:#1C2833; --fg:#E6ECF1; --muted:#93A3B1; --line:#273541;
+  --carb:#F0A040; --carb-soft:#4A3417; --protein:#52B5C1; --protein-soft:#173B41; --fat:#B993CF; --fat-soft:#352841;
+  --ok:#55B583; --over:#E96B62; --over-soft:#47201D; --frame:#05080B; color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.4;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.num{font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--carb);outline-offset:2px}
+.stage{display:flex;gap:40px;justify-content:center;align-items:flex-start;padding-block:24px}
+.notes{max-width:300px;color:var(--muted);font-size:14px;padding-top:40px}
+.notes h1{font-family:var(--display);font-weight:700;font-size:34px;line-height:1;color:var(--fg);margin:0 0 8px;letter-spacing:.01em;text-wrap:balance}
+.notes p{margin:0 0 10px}
+.notes ul{padding-left:18px;margin:0 0 10px}
+.phone{width:390px;max-width:100%;height:800px;background:var(--surface-2);border:10px solid var(--frame);border-radius:48px;
+  overflow:hidden;position:relative;display:flex;flex-direction:column}
+@media (max-width:760px){
+  .notes{display:none}
+  .stage{padding-block:0}
+  body{padding-left:0;padding-right:0}
+  .phone{border:0;border-radius:0;width:100%;height:100vh;height:100dvh}
+}
+.statusbar{height:38px;flex:none;display:flex;justify-content:space-between;align-items:flex-end;padding:0 26px 4px;font-weight:600;font-size:14px}
+.screen{flex:1;overflow-y:auto;padding:4px 16px 24px}
+.head{display:flex;justify-content:space-between;align-items:baseline;margin:6px 0 12px;gap:8px}
+.head h2{font-family:var(--display);font-weight:700;font-size:30px;margin:0;line-height:1}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.card{background:var(--surface);border-radius:16px;padding:14px;border:1px solid var(--line)}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;align-items:center;gap:10px}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.tabs{flex:none;display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);background:var(--surface);padding:6px 0 18px}
+.tabs button{background:none;border:0;padding:6px 0;font-size:12px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabs button[aria-selected="true"]{color:var(--fg)}
+.tabs button[aria-selected="true"] .ico{background:var(--carb)}
+.ico{width:22px;height:4px;border-radius:2px;background:var(--line)}
+
+/* notification */
+.notif{background:color-mix(in srgb,var(--surface) 88%,var(--fg) 12%);border-radius:18px;padding:10px 12px;margin-bottom:12px;box-shadow:0 6px 20px rgba(0,0,0,.12)}
+.notif .app{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;display:flex;justify-content:space-between}
+.notif .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:9px 10px;font-weight:600;font-size:14px}
+.btn.primary{background:var(--carb);border-color:var(--carb);color:#1A1205}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--over)}
+
+/* ring + bars */
+.summary{display:grid;grid-template-columns:132px 1fr;gap:14px;align-items:center}
+.ringwrap{position:relative;width:132px;height:132px}
+.ringwrap .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.big{font-family:var(--display);font-weight:700;font-size:34px;line-height:1}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+.sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.macro{display:grid;grid-template-columns:54px 1fr;gap:8px;align-items:center}
+.macro .lab{font-weight:700;font-size:13px}
+.macro .vals{font-size:12px;color:var(--muted);grid-column:2}
+.bar{position:relative;height:12px;border-radius:6px;background:var(--surface-2);overflow:hidden}
+.bar i{position:absolute;top:0;bottom:0;left:0;border-radius:6px}
+.bar .tgt{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--fg)}
+.budget{border:1.5px dashed var(--carb);background:color-mix(in srgb,var(--surface) 92%,var(--carb) 8%)}
+.budget .big{color:var(--carb)}
+.mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.mini div{background:var(--surface);border-radius:10px;padding:6px 8px;border:1px solid var(--line)}
+.mini b{display:block;font-family:var(--display);font-size:20px;line-height:1.1}
+.slot{display:grid;grid-template-columns:48px 1fr auto;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--line);background:none;border-left:0;border-right:0;border-bottom:0;text-align:left;width:100%}
+.slot:first-child{border-top:0}
+.slot .t{font-family:var(--display);font-weight:600;font-size:18px;color:var(--muted)}
+.slot .n{font-weight:600}
+.chip{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:3px 8px;white-space:nowrap}
+.chip.pending{background:var(--carb-soft);color:var(--fg)}
+.chip.confirmed{background:var(--protein-soft);color:var(--fg)}
+.chip.adjusted{background:var(--fat-soft);color:var(--fg)}
+.chip.skipped{background:var(--surface-2);color:var(--muted)}
+.chip.upcoming{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.chip.open{background:transparent;border:1.5px dashed var(--carb);color:var(--fg)}
+.preview{font-size:13px;color:var(--muted);padding:10px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--line)}
+
+/* week */
+.wk{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;height:190px;padding-top:8px}
+.wk .col{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.wk .bars{position:relative;width:100%;flex:1;display:flex;align-items:flex-end;justify-content:center}
+.wk .b{width:70%;border-radius:6px 6px 2px 2px}
+.wk .tline{position:absolute;left:4%;right:4%;height:2px;background:var(--fg)}
+.wk .oline{position:absolute;left:18%;right:18%;height:0;border-top:2px dotted var(--muted)}
+.wk .d{font-weight:700;font-size:12px}
+.wk .d.today{color:var(--carb)}
+table.days{width:100%;border-collapse:collapse;font-size:14px}
+table.days td,table.days th{padding:7px 4px;border-top:1px solid var(--line);text-align:right}
+table.days th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;border-top:0}
+table.days td:first-child,table.days th:first-child{text-align:left}
+.pos{color:var(--over)} .neg{color:var(--ok)}
+.spark{width:100%;height:56px;display:block}
+
+/* library + editor */
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:3px}
+.seg button{border:0;background:none;border-radius:9px;padding:7px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface-2);color:var(--fg)}
+.search{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font:inherit;color:var(--fg)}
+.li{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.li:first-child{border-top:0}
+.macros-inline{font-size:12px;color:var(--muted)}
+.macros-inline b{font-weight:600}
+.c{color:var(--carb)} .p{color:var(--protein)} .f{color:var(--fat)}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper button{width:30px;height:30px;border-radius:9px;border:1px solid var(--line);background:var(--surface);font-weight:700}
+.stepper .v{min-width:64px;text-align:center;font-weight:600}
+.dayp{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dayp button{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:6px 0;min-width:0;font-weight:700;font-size:13px}
+.dayp button[aria-pressed="true"]{background:var(--fg);color:var(--surface);border-color:var(--fg)}
+.kcalin{font-family:var(--display);font-size:40px;font-weight:700;width:150px;border:0;border-bottom:2px solid var(--carb);background:transparent;color:var(--fg);padding:0}
+.mrow{display:grid;grid-template-columns:70px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.mrow .src{font-size:11px;color:var(--muted)}
+.warn{background:var(--over-soft);border-radius:12px;padding:10px 12px;font-size:14px}
+.warn .acts{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.toggle{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px}
+.toggle button{width:40px;height:30px;border-radius:9px;border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:12px}
+.toggle button[aria-pressed="true"]{background:var(--carb);border-color:var(--carb);color:#1A1205}
+.adjgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
+.badge{font-size:11px;font-weight:700;border-radius:6px;padding:2px 6px;background:var(--surface-2);color:var(--muted)}
+.badge.active{background:var(--carb);color:#1A1205}
+
+/* sheet */
+.scrim{position:absolute;inset:0;background:rgba(5,10,15,.45);display:flex;align-items:flex-end;z-index:5}
+.sheet{background:var(--surface);width:100%;border-radius:22px 22px 0 0;padding:10px 16px 26px;max-height:88%;overflow-y:auto}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 10px}
+.item{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.item .x{border:0;background:none;color:var(--over);font-size:13px;font-weight:600;padding:0;justify-self:start}
+.toast{position:absolute;left:16px;right:16px;bottom:84px;background:var(--fg);color:var(--surface);padding:10px 14px;border-radius:12px;font-weight:600;z-index:6;text-align:center}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .22s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
+</style>
+
+<div class="stage">
+  <aside class="notes">
+    <h1>Quick Calories</h1>
+    <p>Clickable design mockup. All figures are <b>sample data</b> built from the Q4 training schedule at 82&nbsp;kg body weight.</p>
+    <p>Scenario: Tuesday 12:10. Breakfast is confirmed. The pre-lunch snack notification has fired but isn't confirmed yet. Monday closed 120&nbsp;kcal over target, so Tue–Sun were each lowered by 20&nbsp;kcal.</p>
+    <ul>
+      <li>Tap <b>Ate as planned</b> on the notification, or tap any slot to adjust it.</li>
+      <li>Log dinner from the open budget card.</li>
+      <li>In <b>Schedules</b>, change kcal, protein or fat and carbs refill the rest. Set carbs by hand to see the imbalance prompt. Set a deficit and toggle the days it applies to.</li>
+    </ul>
+    <p>Design reference: docs/DESIGN.md</p>
+  </aside>
+  <div class="phone" id="phone">
+    <div class="statusbar"><span class="num">12:10</span><span class="small">5G ▮▮▮</span></div>
+    <main class="screen" id="screen"></main>
+    <nav class="tabs" role="tablist" id="tabs"></nav>
+    <div id="overlay"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+const BW = 82;
+const S = {pT:2.0,pF:1.6,fT:0.8,fF:0.8,cF:4.0,cap:15};
+const r1 = x => Math.round(x);
+const fmt = x => Math.round(x).toLocaleString('en-US');
+
+// ---- library (sample) ----
+const F = {
+  oats:{name:'Oats',ref:100,unit:'g',k:370,c:60,p:13,f:7},
+  milk:{name:'Milk 1.5%',ref:100,unit:'ml',k:47,c:5,p:3.5,f:1.5},
+  skyr:{name:'Skyr natural',ref:100,unit:'g',k:63,c:4,p:11,f:0.2},
+  honey:{name:'Honey',ref:15,unit:'g',k:46,c:12,p:0,f:0},
+  banana:{name:'Banana',ref:1,unit:'pc',k:107,c:27,p:1.3,f:0.4},
+  apple:{name:'Apple',ref:1,unit:'pc',k:80,c:21,p:0.4,f:0.2},
+  rice:{name:'Rice, cooked',ref:100,unit:'g',k:130,c:28,p:2.7,f:0.3},
+  chicken:{name:'Chicken breast',ref:100,unit:'g',k:110,c:0,p:23,f:1.5},
+  veg:{name:'Frozen veg mix',ref:100,unit:'g',k:40,c:6,p:2,f:0.3},
+  oil:{name:'Olive oil',ref:10,unit:'g',k:88,c:0,p:0,f:10},
+  rye:{name:'Rye bread',ref:1,unit:'slice',k:90,c:16,p:3,f:1},
+  jam:{name:'Jam',ref:20,unit:'g',k:50,c:12,p:0,f:0},
+  drink:{name:'Sports drink',ref:500,unit:'ml',k:140,c:35,p:0,f:0},
+  granola:{name:'Granola',ref:60,unit:'g',k:270,c:40,p:6,f:10},
+  pasta:{name:'Pasta, cooked',ref:100,unit:'g',k:158,c:31,p:5.8,f:0.9},
+  salmon:{name:'Salmon fillet',ref:100,unit:'g',k:208,c:0,p:20,f:13},
+};
+const M = {
+  base:{name:'Base breakfast',items:[['oats',120],['milk',300],['skyr',150],['honey',15]]},
+  lunch:{name:'Lunch box',items:[['rice',300],['chicken',150],['veg',100],['oil',10]]},
+  evening:{name:'Evening skyr bowl',items:[['skyr',250],['granola',60],['honey',15]]},
+  salmonpasta:{name:'Salmon pasta (family)',items:[['pasta',350],['salmon',150],['veg',150],['oil',10]]},
+};
+function foodN(id,q){const x=F[id],m=q/x.ref;return {k:x.k*m,c:x.c*m,p:x.p*m,f:x.f*m}}
+function add(a,b){return {k:a.k+b.k,c:a.c+b.c,p:a.p+b.p,f:a.f+b.f}}
+const Z = ()=>({k:0,c:0,p:0,f:0});
+function mealN(id,q){let t=Z();M[id].items.forEach(([fid,qq])=>t=add(t,foodN(fid,qq)));return {k:t.k*q,c:t.c*q,p:t.p*q,f:t.f*q}}
+function entryN(e){return e.kind==='meal'?mealN(e.id,e.q):foodN(e.id,e.q)}
+function entryName(e){if(e.kind==='meal')return (e.q===1?'':e.q+' × ')+M[e.id].name;const x=F[e.id];return x.name+' '+(x.unit==='pc'||x.unit==='slice'?e.q+' '+x.unit:e.q+' '+x.unit)}
+
+// ---- domain ----
+function deriveMacros(kcal,o={}){const P=o.p??r1(S.pT*BW),Fa=o.f??r1(S.fT*BW);const C=o.c??Math.max(0,r1((kcal-4*P-9*Fa)/4));const raw=4*P+4*C+9*Fa-kcal;return {k:kcal,p:P,f:Fa,c:C,imb:(o.c==null&&raw<4)?0:raw}}
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const BASE=[3500,3950,3600,3800,3300,3100,3100];
+// Monday closed at +120 -> redistributed over Tue..Sun (proportional, rounded to 10)
+const MON_ACTUAL=3620, BAL=MON_ACTUAL-BASE[0];
+function redistribute(balance,base){const sum=base.reduce((a,b)=>a+b,0);let cuts=base.map(b=>Math.round(balance*b/sum/10)*10);const capArr=base.map(b=>Math.floor(b*S.cap/100/10)*10);cuts=cuts.map((c,i)=>Math.max(-capArr[i],Math.min(capArr[i],c)));const placed=cuts.reduce((a,b)=>a+b,0);return {targets:base.map((b,i)=>b-cuts[i]),unrecovered:balance-placed}}
+const RED=redistribute(BAL,BASE.slice(1));
+const TGT=[BASE[0],...RED.targets];
+const TODAY=1;
+
+// ---- today state ----
+const state={tab:'today',libSeg:'foods',sheet:null,toast:null,
+  slots:[
+    {id:'bf',t:'07:15',name:'Breakfast',kind:'planned',status:'confirmed',items:[{kind:'meal',id:'base',q:1},{kind:'food',id:'banana',q:1}]},
+    {id:'sn',t:'11:30',name:'Pre-lunch snack',kind:'planned',status:'pending',items:[{kind:'food',id:'banana',q:2},{kind:'food',id:'apple',q:1}]},
+    {id:'lu',t:'13:00',name:'Lunch',kind:'planned',status:'upcoming',items:[{kind:'meal',id:'lunch',q:1},{kind:'food',id:'rye',q:2},{kind:'food',id:'jam',q:40}]},
+    {id:'pr',t:'16:00',name:'Pre-session fuel',kind:'planned',status:'upcoming',items:[{kind:'food',id:'drink',q:500},{kind:'food',id:'rye',q:1},{kind:'food',id:'jam',q:20}]},
+    {id:'di',t:'18:30',name:'Dinner',kind:'open',status:'open',items:[]},
+    {id:'ev',t:'20:30',name:'Evening snack',kind:'planned',status:'upcoming',items:[{kind:'meal',id:'evening',q:1}]},
+  ],
+  ed:{day:1,kcal:3950,ov:{},accepted:null,adj:0,incl:[true,true,true,true,true,true,true]},
+};
+const todayT=deriveMacros(TGT[TODAY]);
+function slotN(s){return s.items.reduce((t,e)=>add(t,entryN(e)),Z())}
+function totals(){let cons=Z(),proj=Z();state.slots.forEach(s=>{const n=slotN(s);if(s.status==='confirmed'||s.status==='adjusted'||(s.kind==='open'&&s.items.length)){cons=add(cons,n);proj=add(proj,n)}else if(s.status!=='skipped'){proj=add(proj,n)}});return {cons,proj}}
+
+// ---- render helpers ----
+function ring(cons,proj,tgt){const R=56,C=2*Math.PI*R;const a=Math.min(cons/tgt,1),b=Math.min(proj/tgt,1);const over=proj>tgt;
+return `<svg viewBox="0 0 132 132" width="132" height="132" role="img" aria-label="kcal ${fmt(cons)} consumed, ${fmt(proj)} projected of ${fmt(tgt)}">
+<circle cx="66" cy="66" r="${R}" fill="none" stroke="var(--surface-2)" stroke-width="14"/>
+<circle cx="66" cy="66" r="${R}" fill="none" stroke="${over?'var(--over)':'var(--carb-soft)'}" stroke-width="14" stroke-dasharray="${b*C} ${C}" transform="rotate(-90 66 66)" stroke-linecap="round"/>
+<circle cx="66" cy="66" r="${R}" fill="none" stroke="var(--carb)" stroke-width="14" stroke-dasharray="${a*C} ${C}" transform="rotate(-90 66 66)" stroke-linecap="round"/></svg>`}
+function bar(lab,cls,cons,proj,tgt){const max=Math.max(tgt,proj)*1.08;const pc=v=>Math.min(100,v/max*100);
+return `<div class="macro"><span class="lab ${cls}">${lab}</span><div class="bar"><i style="width:${pc(proj)}%;background:var(--${cls==='c'?'carb':cls==='p'?'protein':'fat'}-soft)"></i><i style="width:${pc(cons)}%;background:var(--${cls==='c'?'carb':cls==='p'?'protein':'fat'})"></i><span class="tgt" style="left:${pc(tgt)}%"></span></div>
+<span class="vals num">${r1(cons)} eaten · ${r1(proj)} projected · <b style="color:var(--fg)">${tgt} g</b></span></div>`}
+function mi(n){return `<span class="macros-inline num"><b class="c">C ${r1(n.c)}</b> · <b class="p">P ${r1(n.p)}</b> · <b class="f">F ${r1(n.f)}</b></span>`}
+
+// ---- screens ----
+function renderToday(){
+  const {cons,proj}=totals();const T=todayT;
+  const sn=state.slots.find(s=>s.id==='sn');
+  const din=state.slots.find(s=>s.id==='di');
+  const budget={k:T.k-proj.k,c:T.c-proj.c,p:T.p-proj.p,f:T.f-proj.f};
+  const dinnerLogged=din.items.length>0;
+  // preview: assume open slots end on budget if not logged
+  const endDay=dinnerLogged?proj.k:Math.max(proj.k,T.k);
+  const over=r1(endDay-T.k);
+  const rest=TGT.slice(2);
+  const pr=redistribute(BAL+over,BASE.slice(1));const wedNew=pr.targets[1];
+  const notif=sn.status==='pending'?`<div class="notif" role="status"><div class="app"><span>Quick Calories</span><span>11:30</span></div>
+    <div style="font-weight:700;margin-top:2px">Pre-lunch snack</div><div class="small">2 bananas, 1 apple · ${fmt(slotN(sn).k)} kcal</div>
+    <div class="acts"><button class="btn primary" data-act="confirm" data-id="sn">Ate as planned</button><button class="btn" data-act="open" data-id="sn">Adjust</button></div></div>`:'';
+  return `${notif}
+  <div class="head"><div><div class="eyebrow">Tuesday 3 Nov · Day 2 of 7</div><h2>Today</h2></div><span class="small muted">BW 82.0 kg</span></div>
+  <div class="stack">
+   <div class="card"><div class="summary"><div class="ringwrap">${ring(cons.k,proj.k,T.k)}<div class="center"><span class="big num">${fmt(cons.k)}</span><span class="small muted num">of ${fmt(T.k)}</span></div></div>
+    <div class="stack" style="gap:8px">${bar('Carbs','c',cons.c,proj.c,T.c)}${bar('Protein','p',cons.p,proj.p,T.p)}${bar('Fat','f',cons.f,proj.f,T.f)}</div></div>
+    <div class="legend"><span><i class="sw" style="background:var(--carb)"></i>Eaten</span><span><i class="sw" style="background:var(--carb-soft)"></i>Projected (planned)</span><span><i class="sw" style="background:var(--fg);width:3px"></i>Target</span><span class="num">Plan 3,950 → 3,930 (Mon +120)</span></div></div>
+   ${dinnerLogged?'':`<div class="card budget"><div class="spread"><div><div class="eyebrow">Dinner budget · 18:30</div><span class="big num">${fmt(budget.k)}</span> <span class="muted">kcal</span></div><button class="btn primary" data-act="open" data-id="di">Log dinner</button></div>
+     <div class="mini num"><div><span class="small c">Carbs</span><b>${r1(budget.c)} g</b></div><div><span class="small p">Protein</span><b>${r1(budget.p)} g</b></div><div><span class="small f">Fat</span><b>${r1(budget.f)} g</b></div></div></div>`}
+   <div class="card" style="padding-top:4px;padding-bottom:4px">${state.slots.map(s=>{const n=slotN(s);const label=s.kind==='open'?(s.items.length?'logged':'open'):s.status;
+     const chip=s.kind==='open'&&s.items.length?'confirmed':label;
+     return `<button class="slot" data-act="open" data-id="${s.id}"><span class="t num">${s.t}</span><span><span class="n">${s.name}</span><br>${s.kind==='open'&&!s.items.length?'<span class="small muted">No plan. Uses the remaining budget.</span>':`<span class="small muted num">${fmt(n.k)} kcal · </span>${mi(n)}`}</span><span class="chip ${chip}">${label}</span></button>`}).join('')}</div>
+   <div class="preview num">${over>0?`If today ends at ${fmt(endDay)} kcal, tomorrow drops to <b style="color:var(--fg)">${fmt(wedNew)}</b> (plan ${fmt(BASE[2])}).`:`On track. Tomorrow stays <b style="color:var(--fg)">${fmt(TGT[2])}</b> kcal (plan ${fmt(BASE[2])}).`} Targets update when the day closes.</div>
+  </div>`}
+
+function renderWeek(){
+  const {proj}=totals();
+  const actual=[MON_ACTUAL,proj.k,null,null,null,null,null];
+  const max=4200;const h=v=>v/max*100;
+  const goal=BASE.reduce((a,b)=>a+b,0);
+  const bal=BAL;
+  const trend=[86.4,85.1,84.0,83.2,82.5,82.0];
+  const tx=i=>8+i*(284/5),ty=v=>8+(86.8-v)/(86.8-81.6)*40;
+  const pts=trend.map((v,i)=>`${tx(i)},${ty(v)}`).join(' ');
+  return `<div class="head"><div><div class="eyebrow">Microcycle 2–8 Nov</div><h2>Week</h2></div><span class="small muted">Q4 training</span></div>
+  <div class="stack">
+   <div class="card"><div class="spread"><div><div class="eyebrow">Balance so far</div><span class="big num pos">+${fmt(bal)}</span> <span class="muted">kcal</span></div>
+     <div style="text-align:right"><div class="eyebrow">Microcycle goal</div><span class="num" style="font-weight:700">${fmt(goal)} kcal</span><div class="small muted">Maintenance · ±0</div></div></div>
+     <div class="small muted" style="margin-top:6px">Monday's +120 is spread over Tue–Sun (−20 each). Unrecovered: <b class="num" style="color:var(--fg)">${fmt(RED.unrecovered)} kcal</b></div></div>
+   <div class="card"><div class="wk">${DAYS.map((d,i)=>{const a=actual[i];const t=TGT[i];const o=BASE[i];
+     const col=a==null?'':`<div class="b" style="height:${h(a)}%;background:${i===TODAY?'var(--carb-soft)':(a>t?'var(--over)':'var(--carb)')}"></div>`;
+     return `<div class="col"><div class="bars">${col}<span class="tline" style="bottom:${h(t)}%"></span>${o!==t?`<span class="oline" style="bottom:${h(o)}%"></span>`:''}</div><span class="d ${i===TODAY?'today':''}">${d}</span></div>`}).join('')}</div>
+     <div class="legend"><span><i class="sw" style="background:var(--carb)"></i>Eaten</span><span><i class="sw" style="background:var(--carb-soft)"></i>Today, projected</span><span><i class="sw" style="background:var(--fg);height:3px"></i>Target</span><span>⋯ Plan before redistribution</span></div></div>
+   <div class="card" style="overflow-x:auto"><table class="days num"><thead><tr><th>Day</th><th>Plan</th><th>Target</th><th>Carbs</th><th>Eaten</th></tr></thead><tbody>
+     ${DAYS.map((d,i)=>{const t=TGT[i],m=deriveMacros(t);const a=actual[i];return `<tr><td style="font-weight:${i===TODAY?700:400}">${d}${i===TODAY?' ·&nbsp;today':''}</td><td class="muted">${fmt(BASE[i])}</td><td>${fmt(t)}</td><td class="c">${m.c} g</td><td>${a==null?'<span class="muted">–</span>':(i===TODAY?`<span class="muted">${fmt(a)}*</span>`:fmt(a))}</td></tr>`}).join('')}
+   </tbody></table><div class="small muted" style="margin-top:6px">* projected. Protein is 164 g every day (2.0 g/kg).</div></div>
+   <div class="card"><div class="spread"><div><div class="eyebrow">Body weight used</div><span class="big num">82.0</span> <span class="muted">kg</span></div><div class="small muted" style="text-align:right">Average of last microcycle<br>from Apple Health · locked</div></div>
+    <svg class="spark" viewBox="0 0 300 56" role="img" aria-label="Microcycle averages from 86.4 to 82.0 kg"><polyline points="${pts}" fill="none" stroke="var(--protein)" stroke-width="2"/>${trend.map((v,i)=>`<circle cx="${tx(i)}" cy="${ty(v)}" r="${i===trend.length-1?4:2.5}" fill="var(--protein)"/>`).join('')}<text x="8" y="54" font-size="10" fill="var(--muted)">86.4</text><text x="292" y="54" font-size="10" fill="var(--muted)" text-anchor="end">82.0</text></svg>
+    <div class="small muted">Last 6 microcycle averages</div></div>
+  </div>`}
+
+function renderLibrary(){
+  const foods=Object.entries(F),meals=Object.entries(M);
+  const list=state.libSeg==='foods'?foods.map(([id,x])=>`<div class="li"><div><div style="font-weight:600">${x.name}</div><div class="small muted num">per ${x.ref} ${x.unit} · ${x.k} kcal</div></div><div style="text-align:right">${mi(x)}</div></div>`).join('')
+   :meals.map(([id,m])=>{const n=mealN(id,1);return `<div class="li" style="flex-direction:column"><div class="spread"><span style="font-weight:600">${m.name}</span><span class="num small" style="font-weight:600">${fmt(n.k)} kcal</span></div><div class="small muted">${m.items.map(([f,q])=>F[f].name+' '+q+' '+F[f].unit).join(' · ')}</div>${mi(n)}</div>`}).join('');
+  return `<div class="head"><h2>Library</h2><button class="btn primary" data-act="toast" data-msg="New ${state.libSeg==='foods'?'food':'meal'} form opens here">New ${state.libSeg==='foods'?'food':'meal'}</button></div>
+  <div class="stack"><div class="seg" role="group"><button aria-pressed="${state.libSeg==='foods'}" data-act="seg" data-v="foods">Foods</button><button aria-pressed="${state.libSeg==='meals'}" data-act="seg" data-v="meals">Meals</button></div>
+  <input class="search" id="libsearch" placeholder="Search your library" aria-label="Search library">
+  <div class="card" style="padding-top:4px;padding-bottom:4px">${list}</div>
+  <div class="small muted">Only your own items. Coming later: describe a meal and AI drafts the values for you to edit.</div></div>`}
+
+function renderSchedules(){
+  const e=state.ed;const m=deriveMacros(e.kcal,e.ov);
+  const imb=m.imb;const blocked=imb!==0&&e.accepted!==imb;
+  const step=(key,d,label,cls,unit)=>`<div class="mrow"><span class="${cls}" style="font-weight:700">${label}</span><span class="src">${e.ov[key]!=null?'Custom':(key==='c'?'Fills the remaining kcal':key==='p'?'2.0 g/kg (floor 1.6)':'0.8 g/kg (floor 0.8)')}</span>
+     <span class="stepper"><button aria-label="Less ${label}" data-act="mac" data-k="${key}" data-d="-${d}">−</button><span class="v num">${m[key]} g</span><button aria-label="More ${label}" data-act="mac" data-k="${key}" data-d="${d}">+</button></span></div>`;
+  const inc=e.incl.filter(Boolean).length;const per=inc?Math.round(e.adj/inc):0;
+  return `<div class="head"><h2>Schedules</h2><button class="btn" data-act="toast" data-msg="Duplicated as “Q4 training (copy)”">Duplicate</button></div>
+  <div class="stack">
+   <div class="card" style="padding-top:4px;padding-bottom:4px">
+    <div class="li"><div><div style="font-weight:700">Q4 training</div><div class="small muted">Build · Q4</div></div><span class="badge active">Active</span></div>
+    <div class="li"><div><div style="font-weight:600">Holiday – reduced load</div><div class="small muted">Holiday</div></div><button class="btn ghost small" data-act="toast" data-msg="Holiday is active from today. Earlier days keep their targets.">Activate</button></div>
+    <div class="li"><div><div style="font-weight:600">Spring cut</div><div class="small muted">Cut · −3,500 / microcycle</div></div><button class="btn ghost small" data-act="toast" data-msg="Spring cut is active from today. Earlier days keep their targets.">Activate</button></div>
+   </div>
+   <div class="card"><div class="eyebrow" style="margin-bottom:8px">Editing · Q4 training</div>
+    <div class="dayp" role="group" aria-label="Day">${DAYS.map((d,i)=>`<button aria-pressed="${e.day===i}" data-act="day" data-i="${i}">${d}</button>`).join('')}</div>
+    <div class="spread" style="margin-top:12px;align-items:flex-end"><label for="kcal"><div class="eyebrow">Day target</div><input id="kcal" class="kcalin num" type="number" step="50" value="${e.kcal}"> <span class="muted">kcal</span></label>
+      <div class="small muted" style="text-align:right">BW 82.0 kg<br><span class="num">${(m.c/BW).toFixed(1)} g/kg carbs</span></div></div>
+    <div style="margin-top:8px">${step('c',10,'Carbs','c')}${step('p',5,'Protein','p')}${step('f',5,'Fat','f')}</div>
+    ${imb!==0?`<div class="warn"><b class="num">Macros add up to ${fmt(e.kcal+imb)} kcal, ${imb>0?'+':''}${fmt(imb)} vs target.</b><div class="small">${e.accepted===imb?`${imb>0?'Surplus':'Deficit'} accepted for this day.`:'Accept the difference or let carbs rebalance before saving.'}</div>
+      <div class="acts"><button class="btn" data-act="rebalance">Rebalance carbs</button>${e.accepted===imb?'':`<button class="btn danger" data-act="accept">Accept ${imb>0?'surplus':'deficit'}</button>`}</div></div>`:''}
+    <button class="btn primary" style="width:100%;margin-top:10px;${blocked?'opacity:.45;cursor:not-allowed':''}" ${blocked?'disabled':''} data-act="save">Save ${DAYS[e.day]}</button>
+   </div>
+   <div class="card"><div class="eyebrow">Microcycle adjustment</div>
+    <div class="spread" style="margin-top:6px"><span class="stepper"><button aria-label="Larger deficit" data-act="adj" data-d="-500">−</button><span class="v num" style="min-width:96px">${e.adj>0?'+':''}${fmt(e.adj)}</span><button aria-label="Smaller deficit" data-act="adj" data-d="500">+</button></span><span class="small muted">vs maintenance ${fmt(BASE.reduce((a,b)=>a+b,0))}</span></div>
+    <div class="small muted" style="margin-top:8px">Spread evenly over the selected days. Unselected days stay at maintenance.</div>
+    <div class="adjgrid">${DAYS.map((d,i)=>`<div class="toggle"><button aria-pressed="${e.incl[i]}" data-act="incl" data-i="${i}">${d}</button><span class="num ${e.incl[i]&&e.adj?'':'muted'}">${e.incl[i]?(e.adj?fmt(per):'0'):'0'}</span></div>`).join('')}</div>
+   </div>
+   <div class="card"><div class="eyebrow" style="margin-bottom:4px">Slots · ${DAYS[e.day]}</div>
+    ${state.slots.map(s=>`<div class="li"><span><span class="num muted" style="font-weight:600">${s.t}</span> ${s.name}</span><span class="small muted">${s.kind==='open'?'Open (budget)':s.items.length+' items · notify'}</span></div>`).join('')}</div>
+  </div>`}
+
+function renderSheet(){
+  const s=state.slots.find(x=>x.id===state.sheet);if(!s)return '';
+  const isOpen=s.kind==='open';
+  const n=slotN(s);
+  const pick=isOpen?`<div class="eyebrow" style="margin-top:12px">Recent</div>
+     ${['salmonpasta','lunch'].map(id=>{const mn=mealN(id,1);return `<div class="item"><div><div style="font-weight:600">${M[id].name}</div><div class="small muted num">${fmt(mn.k)} kcal · ${mi(mn)}</div></div><button class="btn" data-act="addmeal" data-m="${id}">Add</button></div>`}).join('')}`:'';
+  return `<div class="scrim" data-act="close"><div class="sheet" role="dialog" aria-label="${s.name}">
+   <div class="grab"></div>
+   <div class="spread"><div><div class="eyebrow num">${s.t} · ${isOpen?'Open slot':'Planned'}</div><h3 style="margin:2px 0 0;font-family:var(--display);font-size:26px">${s.name}</h3></div><span class="num" style="font-weight:700">${fmt(n.k)} kcal</span></div>
+   ${s.items.map((e,i)=>{const x=e.kind==='meal'?null:F[e.id];const d=e.kind==='meal'?0.5:(x.unit==='pc'||x.unit==='slice'?1:(x.ref>=100?25:5));
+     return `<div class="item"><div><div style="font-weight:600">${e.kind==='meal'?M[e.id].name:x.name}</div><div class="small muted num">${fmt(entryN(e).k)} kcal · ${mi(entryN(e))}</div></div>
+     <span class="stepper"><button aria-label="Less" data-act="q" data-i="${i}" data-d="-${d}">−</button><span class="v num">${e.kind==='meal'?e.q+' ×':e.q+' '+x.unit}</span><button aria-label="More" data-act="q" data-i="${i}" data-d="${d}">+</button></span>
+     <button class="x" data-act="rm" data-i="${i}">Remove</button></div>`}).join('')}
+   ${pick}
+   <button class="btn" style="width:100%;margin-top:10px" data-act="toast" data-msg="Search the library or create a food here">+ Add from library</button>
+   <div class="stack" style="margin-top:12px;gap:8px">
+    ${isOpen?`<button class="btn primary" data-act="close">Done</button>`:`<button class="btn primary" data-act="confirm" data-id="${s.id}">${s.dirty?'Save as eaten':'Ate as planned'}</button><button class="btn ghost" data-act="skip" data-id="${s.id}">Skip this slot</button>`}
+   </div></div></div>`}
+
+function render(){
+  const tabs=[['today','Today'],['week','Week'],['library','Library'],['schedules','Schedules']];
+  document.getElementById('tabs').innerHTML=tabs.map(([k,l])=>`<button role="tab" aria-selected="${state.tab===k}" data-act="tab" data-v="${k}"><span class="ico"></span>${l}</button>`).join('');
+  const sc=document.getElementById('screen');
+  sc.innerHTML=({today:renderToday,week:renderWeek,library:renderLibrary,schedules:renderSchedules})[state.tab]();
+  document.getElementById('overlay').innerHTML=(state.sheet?renderSheet():'')+(state.toast?`<div class="toast" role="status">${state.toast}</div>`:'');
+  const k=document.getElementById('kcal');if(k)k.addEventListener('change',ev=>{state.ed.kcal=Math.max(1000,parseInt(ev.target.value||'0',10));state.ed.accepted=null;render()});
+}
+let tt;function toast(m){state.toast=m;render();clearTimeout(tt);tt=setTimeout(()=>{state.toast=null;render()},2200)}
+
+document.getElementById('phone').addEventListener('click',ev=>{
+  const b=ev.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;const ed=state.ed;
+  const slot=id=>state.slots.find(s=>s.id===id);
+  if(a==='tab'){state.tab=b.dataset.v;state.sheet=null;document.getElementById('screen').scrollTop=0}
+  else if(a==='open'){state.sheet=b.dataset.id}
+  else if(a==='close'){if(ev.target===b||b.tagName==='BUTTON')state.sheet=null}
+  else if(a==='confirm'){const s=slot(b.dataset.id);s.status=s.dirty?'adjusted':'confirmed';state.sheet=null;render();return toast(s.name+(s.dirty?' saved as adjusted':' confirmed'))}
+  else if(a==='skip'){const s=slot(b.dataset.id);s.status='skipped';state.sheet=null;render();return toast(s.name+' skipped')}
+  else if(a==='q'){const s=slot(state.sheet);const e=s.items[+b.dataset.i];e.q=Math.max(0,Math.round((e.q+parseFloat(b.dataset.d))*100)/100);s.dirty=true}
+  else if(a==='rm'){const s=slot(state.sheet);s.items.splice(+b.dataset.i,1);s.dirty=true}
+  else if(a==='addmeal'){const s=slot(state.sheet);s.items.push({kind:'meal',id:b.dataset.m,q:1})}
+  else if(a==='seg'){state.libSeg=b.dataset.v}
+  else if(a==='toast'){return toast(b.dataset.msg)}
+  else if(a==='day'){ed.day=+b.dataset.i;ed.kcal=BASE[ed.day];ed.ov={};ed.accepted=null}
+  else if(a==='mac'){const k=b.dataset.k;const cur=deriveMacros(ed.kcal,ed.ov)[k];ed.ov[k]=Math.max(0,cur+parseInt(b.dataset.d,10));ed.accepted=null}
+  else if(a==='rebalance'){delete ed.ov.c;ed.accepted=null}
+  else if(a==='accept'){ed.accepted=deriveMacros(ed.kcal,ed.ov).imb}
+  else if(a==='save'){const m=deriveMacros(ed.kcal,ed.ov);if(m.imb!==0&&ed.accepted!==m.imb)return;return toast(DAYS[ed.day]+' saved')}
+  else if(a==='adj'){ed.adj=Math.min(3500,Math.max(-7000,ed.adj+parseInt(b.dataset.d,10)))}
+  else if(a==='incl'){ed.incl[+b.dataset.i]=!ed.incl[+b.dataset.i]}
+  render();
+});
+render();
+})();
+</script>

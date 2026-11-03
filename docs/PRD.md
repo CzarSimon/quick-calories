@@ -86,9 +86,5 @@ Kcal is primary; macros derive from it, using **body weight (BW)** = average of 
 | Platform | iOS only for now. |
 | Microcycle | Configurable length/anchor in data model and settings; no UI in v1; non-7-day cycles use "Day 1 … Day N". |
 
-## 11. Open points for the design phase
-- PocketBase collections and access rules; offline/sync strategy.
-- Exact redistribution algorithm spec incl. rounding, and when it recomputes (on each confirmation vs end of day).
-- Notification scheduling (how far ahead to schedule, actionable categories, rescheduling on schedule switch).
-- How a schedule switch mid-cycle affects maintenance, adjustment and balance for the current cycle.
-- Time zone / travel handling for slot times.
+## 11. Design
+The open design points (data model, sync, redistribution algorithm, notifications, schedule switching, time zones) are resolved in [`DESIGN.md`](DESIGN.md).
