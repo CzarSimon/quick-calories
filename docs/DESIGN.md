@@ -19,10 +19,10 @@ Design decisions taken in this round:
   - A persisted mutation queue: confirmations work offline and replay in order when the app is back online.
 - **Domain core:** `src/domain/` is pure TypeScript with no React or PocketBase imports. It covers macro derivation, adjustment spread, redistribution, microcycle/date math and day totals, and is unit-tested with Jest. Everything that matters numerically lives here.
 - **Backend:** schema as versioned JS migrations in `pocketbase/pb_migrations/`, applied to the existing instance. Every collection has the rule `user = @request.auth.id`. No server hooks in v1.
-- **Repo layout:** `app/` (Expo) and `pocketbase/` (migrations, seed script for the Q4 schedule).
+- **Repo layout:** `app/` (Expo) and `pocketbase/` (schema migrations, plus a dev-only seed script for the Q4 schedule that is never deployed).
 
 ## 2. PocketBase collections
-Every collection has a `user` field; child collections inherit their owner through the parent.
+Every collection, child collections included, has its own required `user` relation. Rules: list/view/delete `user = @request.auth.id`; create also requires `@request.body.user = @request.auth.id`; update forbids changing `user`. (Simpler and cheaper than rules that walk up to the parent record.) Dates are `YYYY-MM-DD` text and times `HH:MM` text, validated by pattern.
 
 **Settings**
 - `settings` (one per user):
@@ -31,19 +31,19 @@ Every collection has a `user` field; child collections inherit their owner throu
   - microcycle and nudges: `microcycle_length_days` 7, `microcycle_anchor_date` (a Monday), `nudge_evening_time`, `nudge_morning_time`
 
 **Library**
-- `foods`: name, ref_amount, unit (g/ml/piece/serving), kcal, carbs_g, protein_g, fat_g, source (`manual`/`ai`), archived.
+- `foods`: name, ref_amount, unit (g/ml/piece/slice/serving), kcal, carbs_g, protein_g, fat_g, source (`manual`/`ai`), archived.
 - `meals`: name, notes, source, archived.
 - `meal_items`: meal, food, quantity. A collection rather than a json field, because PocketBase relation fields can't hold a quantity.
 - `labels`: name, color.
 
 **Schedules**
 - `schedules`: name, labels[], is_active (one per user, enforced in the app), adjustment_kcal (+/−), adjustment_mode (`even`/`custom`).
-- `day_plans`: schedule, day_index (0…N−1), kcal, protein_gkg/fat_gkg/carbs_g overrides (null = derived), accepted_imbalance_kcal, adjustment_included (bool), adjustment_custom_kcal (null unless custom).
+- `day_plans`: schedule, day_index (0…N−1), kcal, `macro_overrides` json `{protein_gkg?, fat_gkg?, carbs_g?}` (a missing key = derived; PocketBase number fields can't be null), accepted_imbalance_kcal, adjustment_included (bool), adjustment_custom_kcal (only read when the schedule's mode is `custom`).
 - `plan_slots`: day_plan, name, time ("HH:MM" local), kind (`planned`/`open`), notify, sort.
 - `plan_slot_items`: slot, food or meal, quantity.
 
 **Tracking**
-- `microcycles`: start_date, length, mesocycle (optional relation, unused in v1), bw_kg, bw_source (`healthkit`/`previous`/`manual`), cumulative_balance_kcal, unrecovered_kcal, closed.
+- `microcycles`: start_date, length, bw_kg, bw_source (`healthkit`/`previous`/`manual`), cumulative_balance_kcal, unrecovered_kcal, closed.
 - `day_logs`:
   - identity: date ("YYYY-MM-DD" local), microcycle, day_index, schedule, day_plan
   - targets: `base_targets` json (plan + adjustment, kcal/p/f/c) and `targets` json (after redistribution)
@@ -51,7 +51,7 @@ Every collection has a `user` field; child collections inherit their owner throu
 - `log_slots`: day_log, plan_slot, name, time, kind, status (`pending`/`confirmed`/`adjusted`/`skipped`).
 - `log_entries`: log_slot, food or meal ref, name, quantity, kcal/c/p/f **snapshot**, origin (`planned`/`adhoc`), source (`manual`/`ai`).
 
-**Terminology / future periodisation:** the code and schema use the sport-science terms throughout (`microcycle`, never "cycle" or "week"). `mesocycles` (name, start/end, goal, notes) and `macrocycles` are **only named in the design** as future parents. `microcycles.mesocycle` is an optional relation, and no tables or UI are built in v1. The domain module puts periodisation types in `src/domain/periodisation.ts` so meso/macro can be added later without renaming.
+**Terminology / future periodisation:** the code and schema use the sport-science terms throughout (`microcycle`, never "cycle" or "week"). `mesocycles` (name, start/end, goal, notes) and `macrocycles` are **only named in the design** as future parents. An optional `microcycles.mesocycle` relation will be added together with the `mesocycles` collection; no tables or UI are built in v1. The domain module puts periodisation types in `src/domain/periodisation.ts` so meso/macro can be added later without renaming.
 
 ## 3. Lifecycle
 - **Microcycle start:** happens on app open or a background refresh when today ≥ the next microcycle start. Steps:

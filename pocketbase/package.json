@@ -1,0 +1,12 @@
+{
+  "name": "quick-calories-pocketbase",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "./scripts/dev.sh",
+    "seed": "node scripts/seed.mjs"
+  },
+  "dependencies": {
+    "pocketbase": "0.28.2"
+  }
+}
