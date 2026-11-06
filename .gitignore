@@ -1,8 +1,11 @@
 node_modules/
-.env
-.env.local
 .DS_Store
 
-# PocketBase local dev
-pocketbase/bin/
-pocketbase/pb_data/
+# Secrets and local env files (keep the secret-free examples)
+.env
+.env.*
+!.env.example
+
+# Local PocketBase binary, data, releases and other runtime state
+/pocketbase
+.local/

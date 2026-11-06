@@ -3,7 +3,7 @@
 // This is NOT a migration and is never part of a deployment.
 //
 // Usage:
-//   PB_URL=http://127.0.0.1:8090 PB_EMAIL=me@example.com PB_PASSWORD=secret node scripts/seed.mjs [--create-user] [--reset]
+//   PB_URL=http://127.0.0.1:8090 PB_EMAIL=me@example.com PB_PASSWORD=secret npm run seed -- [--create-user] [--reset]
 //
 //   --create-user  create the user if missing (needs PB_ADMIN_EMAIL / PB_ADMIN_PASSWORD of a superuser)
 //   --reset        delete this user's settings, seeded schedule and "Q4" label first, then seed again

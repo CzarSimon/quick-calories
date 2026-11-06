@@ -220,3 +220,34 @@ failures. A stale October 3 backup lock was recovered and scheduled backups resu
 Recheck and coordinate those maintenance findings before a production app release;
 do not assume the platform has an all-clear. Do not increase capacity, reboot the
 shared host, or change another application's configuration as an app setup step.
+
+## App schema and tooling in this repository
+
+Added by the app work. The sections above are the original hosting handoff.
+
+### What is in `backend/`
+
+- `pb_migrations/1762300000_auth.js`: the auth contract for `users`. Signup is closed (`createRule = null`), sign-in is email + password only, and OTP, OAuth2 and MFA are off. Users can view and update only their own account and can't delete it from the app.
+- `pb_migrations/1762300001_settings.js` … `1762300004_tracking.js`: the app collections (`settings`, `foods`, `meals`, `meal_items`, `labels`, `schedules`, `day_plans`, `plan_slots`, `plan_slot_items`, `microcycles`, `day_logs`, `log_slots`, `log_entries`). Field-level details are in `docs/DESIGN.md` §2.
+- `pb_hooks/`: empty. No hooks are needed yet.
+
+### Access model
+
+- Every app collection has a required `user` relation.
+- List, view and delete require `user = @request.auth.id`.
+- Create requires `@request.body.user = @request.auth.id`. Update forbids changing `user`.
+- Every relation to another owned record (for example `meal_items.food` or `log_entries.log_slot`) must point at one of the caller's own records, on both create and update. That includes the multi-relation `schedules.labels` and the `labels+` append modifier.
+
+### Local tooling (outside `backend/`, never packed)
+
+- `scripts/ensure-pocketbase.sh`: downloads PocketBase 0.40.4 to `./pocketbase`.
+- `scripts/dev-backend.sh` (`npm run backend:dev`): serves `.local/pb_data` with this repo's migrations and hooks. Automigrate is on, so collection edits made in the local dashboard are written as new files in `pb_migrations/`. Review them before committing.
+- `scripts/test-backend.mjs` (`npm run test:backend`): a fresh throwaway server per run. It checks:
+  - anonymous denial and closed signup
+  - two-user isolation on every collection
+  - owner reassignment
+  - references to another user's records for every relation
+  - tampered and expired tokens, and logout
+  - the dev seed and a full record chain
+  - rollback and re-apply of all migrations
+- `scripts/seed.mjs` (`npm run seed`): the dev-only Q4 training seed. It's not a migration and must never be packed.

@@ -9,14 +9,25 @@ const UPDATE = OWN + " && (@request.body.user:isset = false || @request.body.use
 const DATE = "^\\d{4}-\\d{2}-\\d{2}$";
 const TIME = "^([01]\\d|2[0-3]):[0-5]\\d$";
 
-function owned(users, name, fields, indexes) {
+// A reference to another owned record must point at one of the caller's own records.
+// Names prefixed with "*" are multi-relations: every referenced record must be owned.
+function refRule(field) {
+  if (field.startsWith("*")) {
+    const f = field.slice(1);
+    return `(@request.body.${f}:isset = false || @request.body.${f}:length = 0 || @request.body.${f}.user = @request.auth.id)`;
+  }
+  return `(@request.body.${field}:isset = false || @request.body.${field} = "" || @request.body.${field}.user = @request.auth.id)`;
+}
+
+function owned(users, name, fields, indexes, refs) {
+  const refRules = (refs || []).map(refRule);
   return new Collection({
     type: "base",
     name,
     listRule: OWN,
     viewRule: OWN,
-    createRule: CREATE,
-    updateRule: UPDATE,
+    createRule: [CREATE, ...refRules].join(" && "),
+    updateRule: [UPDATE, ...refRules].join(" && "),
     deleteRule: OWN,
     fields: [
       { type: "relation", name: "user", required: true, collectionId: users.id, maxSelect: 1, cascadeDelete: true },
@@ -72,6 +83,7 @@ migrate(
         "CREATE UNIQUE INDEX `idx_day_logs_user_date` ON `day_logs` (`user`, `date`)",
         "CREATE INDEX `idx_day_logs_microcycle` ON `day_logs` (`microcycle`)",
       ],
+      ["microcycle", "schedule", "day_plan"],
     );
     app.save(dayLogs);
 
@@ -88,6 +100,7 @@ migrate(
         { type: "number", name: "sort", onlyInt: true },
       ],
       ["CREATE INDEX `idx_log_slots_day_log` ON `log_slots` (`day_log`)"],
+      ["day_log", "plan_slot"],
     );
     app.save(logSlots);
 
@@ -109,6 +122,7 @@ migrate(
         { type: "number", name: "sort", onlyInt: true },
       ],
       ["CREATE INDEX `idx_log_entries_log_slot` ON `log_entries` (`log_slot`)"],
+      ["log_slot", "food", "meal"],
     );
     app.save(logEntries);
   },

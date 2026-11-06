@@ -5,49 +5,63 @@ A personal calorie and macro tracker for a periodised training week. You plan ea
 - Product requirements: [`docs/PRD.md`](docs/PRD.md)
 - Technical design: [`docs/DESIGN.md`](docs/DESIGN.md)
 - Clickable mockup: [`docs/mockups/index.html`](docs/mockups/index.html)
+- Backend hosting and operations: [`backend/README.md`](backend/README.md)
+- First release and phone install: [`docs/RELEASE.md`](docs/RELEASE.md)
 
 ## Repository
 
 | Path | What |
 |---|---|
 | `app/` | iOS app: Expo (SDK 58), TypeScript, expo-router |
-| `pocketbase/` | PocketBase schema migrations, dev seed and local tooling (see [`pocketbase/README.md`](pocketbase/README.md)) |
+| `backend/` | PocketBase migrations (`pb_migrations/`) and hooks (`pb_hooks/`). This is the only thing packed into a release. |
+| `scripts/` | Local PocketBase 0.40.4, backend access tests, dev-only seed (never released) |
 
-## Running locally
+The backend is the hosted `quick-calories` PocketBase project at `https://quick-calories.pb.simonlilja.eu`.
 
-### 1. Backend
+## Local development
 
-Start PocketBase and seed your account: follow [`pocketbase/README.md`](pocketbase/README.md).
+Install the root tooling once:
 
-### 2. App
+```bash
+npm install
+```
+
+Run the backend tests. They start a throwaway PocketBase built from the migrations:
+
+```bash
+npm run test:backend
+```
+
+Start a local backend. It downloads PocketBase 0.40.4 to `./pocketbase` and keeps its data in `.local/pb_data`:
+
+```bash
+npm run backend:dev
+```
+
+Create a local superuser (once):
+
+```bash
+./pocketbase superuser upsert admin@example.com 'change-me-123' --dir=.local/pb_data
+```
+
+Seed a local account with the Q4 training schedule:
+
+```bash
+PB_URL=http://127.0.0.1:8090 PB_EMAIL=you@example.com PB_PASSWORD='your-password' PB_ADMIN_EMAIL=admin@example.com PB_ADMIN_PASSWORD='change-me-123' npm run seed -- --create-user
+```
+
+### App
 
 ```bash
 cd app
 npm install
-cp .env.example .env
 ```
 
-In `.env`, set `EXPO_PUBLIC_PB_URL` to an address your phone can reach, for example `http://<your-mac-ip>:8090`. PocketBase must then listen on `0.0.0.0:8090`.
+The app talks to production by default. To use a local backend in the simulator, copy `app/.env.example` to `app/.env` and set `EXPO_PUBLIC_POCKETBASE_URL=http://127.0.0.1:8090`.
 
-The app uses native modules, so it runs in a **development build**, not Expo Go. Build one either way:
+The app uses native modules, so it runs in a development build, not Expo Go. See [`docs/RELEASE.md`](docs/RELEASE.md) for building and installing it on your iPhone.
 
-- On a Mac with Xcode:
-
-  ```bash
-  npm run ios
-  ```
-
-- In the cloud with EAS. Install the resulting build on your iPhone, then start the dev server:
-
-  ```bash
-  npx eas-cli@latest build --profile development --platform ios
-  ```
-
-  ```bash
-  npm start
-  ```
-
-### Checks
+Checks (from `app/`):
 
 ```bash
 npm run typecheck
@@ -63,7 +77,7 @@ npm test
 
 ## Milestones
 
-- **M0:** scaffold, PocketBase schema, dev seed (done)
+- **M0:** scaffold, backend schema, dev seed (done)
 - **M1:** domain calculations + tests
 - **M2:** Library
 - **M3:** Schedules editor

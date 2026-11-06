@@ -1,0 +1,13 @@
+{
+  "name": "quick-calories",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "backend:dev": "scripts/dev-backend.sh",
+    "seed": "node scripts/seed.mjs",
+    "test:backend": "node scripts/test-backend.mjs"
+  },
+  "devDependencies": {
+    "pocketbase": "0.28.2"
+  }
+}

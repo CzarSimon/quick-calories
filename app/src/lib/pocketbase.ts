@@ -3,7 +3,9 @@ import PocketBase, { AsyncAuthStore } from 'pocketbase';
 
 const AUTH_KEY = 'pb_auth';
 
-export const PB_URL = process.env.EXPO_PUBLIC_PB_URL ?? 'http://127.0.0.1:8090';
+// Public configuration, not a secret. Metro inlines EXPO_PUBLIC_* at bundle time, so for a dev
+// client the value comes from app/.env on the machine running `npm start`.
+export const PB_URL = process.env.EXPO_PUBLIC_POCKETBASE_URL ?? 'https://quick-calories.pb.simonlilja.eu';
 
 const initialAuth = SecureStore.getItemAsync(AUTH_KEY).catch(() => null);
 

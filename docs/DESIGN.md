@@ -18,8 +18,8 @@ Design decisions taken in this round:
   - TanStack Query, with its cache persisted to MMKV.
   - A persisted mutation queue: confirmations work offline and replay in order when the app is back online.
 - **Domain core:** `src/domain/` is pure TypeScript with no React or PocketBase imports. It covers macro derivation, adjustment spread, redistribution, microcycle/date math and day totals, and is unit-tested with Jest. Everything that matters numerically lives here.
-- **Backend:** schema as versioned JS migrations in `pocketbase/pb_migrations/`, applied to the existing instance. Every collection has the rule `user = @request.auth.id`. No server hooks in v1.
-- **Repo layout:** `app/` (Expo) and `pocketbase/` (schema migrations, plus a dev-only seed script for the Q4 schedule that is never deployed).
+- **Backend:** the hosted `quick-calories` PocketBase project (0.40.4, `https://quick-calories.pb.simonlilja.eu`), operated through pocketbase-paas. Schema as versioned JS migrations in `backend/pb_migrations/` (hooks would go in `backend/pb_hooks/`), released as a packed artifact by the operator. After the first release only additive changes pass the upgrade gate. Signup is closed (accounts are created by the operator). Every collection has the rule `user = @request.auth.id`, and every reference to another owned record must point at one of the caller's own records. No server hooks in v1.
+- **Repo layout:** `app/` (Expo), `backend/` (migrations and hooks: the only thing released) and `scripts/` (local PocketBase, backend tests, and a dev-only seed for the Q4 schedule that is never released).
 
 ## 2. PocketBase collections
 Every collection, child collections included, has its own required `user` relation. Rules: list/view/delete `user = @request.auth.id`; create also requires `@request.body.user = @request.auth.id`; update forbids changing `user`. (Simpler and cheaper than rules that walk up to the parent record.) Dates are `YYYY-MM-DD` text and times `HH:MM` text, validated by pattern.

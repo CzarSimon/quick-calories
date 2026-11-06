@@ -7,14 +7,25 @@ const CREATE = '@request.auth.id != "" && @request.body.user = @request.auth.id'
 const UPDATE = OWN + " && (@request.body.user:isset = false || @request.body.user = @request.auth.id)";
 const TIME = "^([01]\\d|2[0-3]):[0-5]\\d$";
 
-function owned(users, name, fields, indexes) {
+// A reference to another owned record must point at one of the caller's own records.
+// Names prefixed with "*" are multi-relations: every referenced record must be owned.
+function refRule(field) {
+  if (field.startsWith("*")) {
+    const f = field.slice(1);
+    return `(@request.body.${f}:isset = false || @request.body.${f}:length = 0 || @request.body.${f}.user = @request.auth.id)`;
+  }
+  return `(@request.body.${field}:isset = false || @request.body.${field} = "" || @request.body.${field}.user = @request.auth.id)`;
+}
+
+function owned(users, name, fields, indexes, refs) {
+  const refRules = (refs || []).map(refRule);
   return new Collection({
     type: "base",
     name,
     listRule: OWN,
     viewRule: OWN,
-    createRule: CREATE,
-    updateRule: UPDATE,
+    createRule: [CREATE, ...refRules].join(" && "),
+    updateRule: [UPDATE, ...refRules].join(" && "),
     deleteRule: OWN,
     fields: [
       { type: "relation", name: "user", required: true, collectionId: users.id, maxSelect: 1, cascadeDelete: true },
@@ -45,6 +56,7 @@ migrate(
         { type: "select", name: "adjustment_mode", required: true, maxSelect: 1, values: ["even", "custom"] },
       ],
       ["CREATE INDEX `idx_schedules_user` ON `schedules` (`user`)"],
+      ["*labels"],
     );
     app.save(schedules);
 
@@ -62,6 +74,7 @@ migrate(
         { type: "number", name: "adjustment_custom_kcal", onlyInt: true },
       ],
       ["CREATE UNIQUE INDEX `idx_day_plans_schedule_day` ON `day_plans` (`schedule`, `day_index`)"],
+      ["schedule"],
     );
     app.save(dayPlans);
 
@@ -77,6 +90,7 @@ migrate(
         { type: "number", name: "sort", onlyInt: true },
       ],
       ["CREATE INDEX `idx_plan_slots_day_plan` ON `plan_slots` (`day_plan`)"],
+      ["day_plan"],
     );
     app.save(planSlots);
 
@@ -92,6 +106,7 @@ migrate(
         { type: "number", name: "sort", onlyInt: true },
       ],
       ["CREATE INDEX `idx_plan_slot_items_slot` ON `plan_slot_items` (`slot`)"],
+      ["slot", "food", "meal"],
     );
     app.save(planSlotItems);
   },

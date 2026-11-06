@@ -6,14 +6,25 @@ const OWN = "user = @request.auth.id";
 const CREATE = '@request.auth.id != "" && @request.body.user = @request.auth.id';
 const UPDATE = OWN + " && (@request.body.user:isset = false || @request.body.user = @request.auth.id)";
 
-function owned(users, name, fields, indexes) {
+// A reference to another owned record must point at one of the caller's own records.
+// Names prefixed with "*" are multi-relations: every referenced record must be owned.
+function refRule(field) {
+  if (field.startsWith("*")) {
+    const f = field.slice(1);
+    return `(@request.body.${f}:isset = false || @request.body.${f}:length = 0 || @request.body.${f}.user = @request.auth.id)`;
+  }
+  return `(@request.body.${field}:isset = false || @request.body.${field} = "" || @request.body.${field}.user = @request.auth.id)`;
+}
+
+function owned(users, name, fields, indexes, refs) {
+  const refRules = (refs || []).map(refRule);
   return new Collection({
     type: "base",
     name,
     listRule: OWN,
     viewRule: OWN,
-    createRule: CREATE,
-    updateRule: UPDATE,
+    createRule: [CREATE, ...refRules].join(" && "),
+    updateRule: [UPDATE, ...refRules].join(" && "),
     deleteRule: OWN,
     fields: [
       { type: "relation", name: "user", required: true, collectionId: users.id, maxSelect: 1, cascadeDelete: true },
@@ -71,6 +82,7 @@ migrate(
         { type: "number", name: "sort", onlyInt: true },
       ],
       ["CREATE INDEX `idx_meal_items_meal` ON `meal_items` (`meal`)"],
+      ["meal", "food"],
     );
     app.save(mealItems);
 
