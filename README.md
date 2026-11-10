@@ -47,7 +47,7 @@ Create a local superuser (once):
 Seed a local account with the Q4 training schedule:
 
 ```bash
-PB_URL=http://127.0.0.1:8090 PB_EMAIL=you@example.com PB_PASSWORD='your-password' PB_ADMIN_EMAIL=admin@example.com PB_ADMIN_PASSWORD='change-me-123' npm run seed -- --create-user
+PB_URL=http://127.0.0.1:8090 PB_EMAIL=you@example.com PB_PASSWORD='<your-password>' PB_ADMIN_EMAIL=admin@example.com PB_ADMIN_PASSWORD='change-me-123' npm run seed -- --create-user
 ```
 
 ### App

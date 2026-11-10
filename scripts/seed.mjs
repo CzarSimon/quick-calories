@@ -56,6 +56,10 @@ const args = new Set(process.argv.slice(2));
 const url = env("PB_URL", false) || "http://127.0.0.1:8090";
 const email = env("PB_EMAIL");
 const password = env("PB_PASSWORD");
+if (/^<?your-password>?$/.test(password)) {
+  console.error("PB_PASSWORD is still the placeholder from the docs. Use your real password, in single quotes.");
+  process.exit(1);
+}
 
 async function ensureUser() {
   const admin = new PocketBase(url);
@@ -71,7 +75,20 @@ async function main() {
 
   const pb = new PocketBase(url);
   pb.autoCancellation(false);
-  const auth = await pb.collection("users").authWithPassword(email, password);
+  let auth;
+  try {
+    auth = await pb.collection("users").authWithPassword(email, password);
+  } catch (err) {
+    if (err?.status === 400) {
+      console.error(
+        `Sign-in failed for ${email} at ${url}.\n` +
+          "Check that PB_PASSWORD is your real password (single-quoted) and that the account exists in the\n" +
+          '"users" collection of the dashboard. A Superusers account cannot sign in to the app.',
+      );
+      process.exit(1);
+    }
+    throw err;
+  }
   const user = auth.record.id;
   const byName = (name) => pb.filter("name = {:name}", { name });
 

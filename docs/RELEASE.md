@@ -54,11 +54,11 @@ Deploy into the empty database. Don't create users or records before the initial
 
 ## 3. After deployment
 
-1. Create your account in the production dashboard. Signup is closed, so the app can't create accounts. Open the dashboard via `sudo pbpaas project dashboard quick-calories` over SSH, go to Collections → users → New record, and fill in your email and password.
+1. Create your account in the production dashboard. Signup is closed, so the app can't create accounts. Open the dashboard via `sudo pbpaas project dashboard quick-calories` over SSH, go to Collections → **users** → New record, and fill in your email and password. Don't use the Superusers collection: a superuser account can't sign in to the app.
 2. Optional: give your account the starter Q4 training schedule. This uses your own login (no superuser) and runs from any machine with Node:
 
    ```bash
-   PB_URL=https://quick-calories.pb.simonlilja.eu PB_EMAIL=you@example.com PB_PASSWORD='your-password' npm run seed
+   PB_URL=https://quick-calories.pb.simonlilja.eu PB_EMAIL=you@example.com PB_PASSWORD='<your-password>' npm run seed
    ```
 
 3. Smoke checks:
