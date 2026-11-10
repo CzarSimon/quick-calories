@@ -37,7 +37,7 @@ export const pb = new PocketBase(PB_URL, store);
 pb.autoCancellation(false);
 
 // The hosted server rate-limits requests (HTTP 429). Wait briefly and retry instead of failing a save.
-const RETRY_DELAYS_MS = [1000, 2000, 4000];
+const RETRY_DELAYS_MS = [1000, 2000, 4000, 8000];
 const send = pb.send.bind(pb);
 pb.send = async <T = unknown>(path: string, options: Parameters<typeof send>[1]): Promise<T> => {
   for (let attempt = 0; ; attempt++) {

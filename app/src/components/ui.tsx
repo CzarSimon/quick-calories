@@ -141,6 +141,34 @@ export function Segmented<T extends string>({ options, value, onChange }: Segmen
   );
 }
 
+/** A small toggle: filled when selected. */
+export function Chip({ label, selected, onPress, testID }: { label: string; selected: boolean; onPress: () => void; testID?: string }) {
+  const colors = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      testID={testID}
+      onPress={onPress}
+      style={[
+        styles.chip,
+        selected ? { backgroundColor: colors.carb, borderColor: colors.carb } : { backgroundColor: colors.backgroundElement, borderColor: colors.line },
+      ]}>
+      <ThemedText type="smallBold" themeColor={selected ? 'onAccent' : 'textSecondary'}>
+        {label}
+      </ThemedText>
+    </Pressable>
+  );
+}
+
+/** A coloured notice box for warnings and things that need a decision. */
+export function Notice({ children, tone = 'warning' }: { children: ReactNode; tone?: 'warning' | 'info' }) {
+  const colors = useTheme();
+  return (
+    <View style={[styles.notice, { backgroundColor: tone === 'warning' ? colors.carbSoft : colors.backgroundSelected }]}>{children}</View>
+  );
+}
+
 /** "C 60 · P 13 · F 7" in the macro colours. */
 export function MacroLine({ nutrition }: { nutrition: Nutrition }) {
   return (
@@ -247,4 +275,6 @@ const styles = StyleSheet.create({
   tile: { flex: 1, borderRadius: 10, paddingVertical: Spacing.two, paddingHorizontal: 10 },
   confirmRow: { flexDirection: 'row', gap: Spacing.two },
   grow: { flex: 1 },
+  chip: { borderWidth: 1, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12, minWidth: 48, alignItems: 'center' },
+  notice: { borderRadius: 12, padding: 12, gap: Spacing.two },
 });

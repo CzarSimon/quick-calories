@@ -116,13 +116,12 @@ Every collection, child collections included, has its own required `user` relati
   - body weight used this microcycle and the trend of microcycle averages
 - **Library:** Foods / Meals segments, search; food form; meal builder (add foods × qty with live totals). Deleting a food or meal archives it, so meals, plans and logs that use it keep working. Sorting by recent or frequent use comes with logging (M4).
 - **Schedules:**
-  - list with labels and an active badge; duplicate, delete, activate
-  - editor:
-    - day picker
-    - kcal input with derived macros; overrides via steppers; an imbalance banner with an "Accept" action
-    - adjustment editor: total, even/custom, a per-day include toggle and amounts
-    - slot list (time, kind, items)
-- **Settings:** the macro defaults and floors, max daily change %, fallback weight, nudge times, account, HealthKit permission. Microcycle length is not exposed in the UI.
+  - list with labels and an active badge
+  - schedule editor: name, labels (pick or create), the microcycle goal (maintenance, deficit or surplus; spread evenly or set per day; per-day include toggle), a per-day preview of the resulting targets, and a notice when floors block part of a deficit. Activate, duplicate (copies every day, slot and item) and delete (not while active).
+  - day editor: kcal target with derived macros; − / + steppers for each macro with "Reset"; the imbalance notice with "Rebalance carbs" and "Accept surplus/deficit" (saving is blocked until one is chosen); the day's slots with what the planned ones add up to and what is left for open slots; "Copy slots from another day" (replaces this day's slots).
+  - slot editor: name, time, planned or open, reminder on/off, and for planned slots the meals (× servings) and foods (× quantity) with a live total.
+  - A new schedule starts with every day at one kcal value. Until microcycles exist (M6), macros use the fallback weight from Settings.
+- **Settings:** protein and fat targets and floors, carb floor, largest daily change %, fallback weight, reminder times, account and sign-out. HealthKit permission arrives with M6. Microcycle length is not exposed in the UI.
 
 ## 7. Build milestones
 - **M0:** scaffold Expo app + PocketBase migrations + seed script

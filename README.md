@@ -82,7 +82,7 @@ npm test
 - **M0:** scaffold, backend schema, dev seed (done)
 - **M1:** domain calculations + tests (done)
 - **M2:** Library (done)
-- **M3:** Schedules editor
+- **M3:** Schedules editor and Settings (done)
 - **M4:** Today and slot confirmation
 - **M5:** Notifications
 - **M6:** HealthKit, microcycles, redistribution, Week

@@ -46,3 +46,35 @@ export function quantityStep(unit: FoodUnit, refAmount: number): number {
   if (unit === 'g' || unit === 'ml') return refAmount >= 100 ? 10 : 5;
   return unit === 'serving' ? 0.5 : 1;
 }
+
+/** "+500", "−500", "0" (with a real minus sign). */
+export function formatSignedKcal(value: number): string {
+  const rounded = Math.round(value);
+  if (rounded === 0) return '0';
+  return `${rounded > 0 ? '+' : '−'}${Math.abs(rounded).toLocaleString('en-US')}`;
+}
+
+/**
+ * Turn what a person typed into "HH:MM", or null when it isn't a time.
+ * Accepts "9", "900", "0930", "9:30" and "9.30".
+ */
+export function normalizeTime(text: string): string | null {
+  const cleaned = text.trim();
+  let hours: number;
+  let minutes: number;
+  const separated = /^(\d{1,2})[:.](\d{2})$/.exec(cleaned);
+  if (separated) {
+    hours = Number(separated[1]);
+    minutes = Number(separated[2]);
+  } else if (/^\d{1,2}$/.test(cleaned)) {
+    hours = Number(cleaned);
+    minutes = 0;
+  } else if (/^\d{3,4}$/.test(cleaned)) {
+    hours = Number(cleaned.slice(0, -2));
+    minutes = Number(cleaned.slice(-2));
+  } else {
+    return null;
+  }
+  if (hours > 23 || minutes > 59) return null;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
