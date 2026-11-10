@@ -61,8 +61,30 @@ if (/^<?your-password>?$/.test(password)) {
   process.exit(1);
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// The hosted server rate-limits requests (HTTP 429). Retry with backoff instead of failing midway.
+function client() {
+  const pb = new PocketBase(url);
+  pb.autoCancellation(false);
+  const send = pb.send.bind(pb);
+  pb.send = async (path, options) => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await send(path, options);
+      } catch (err) {
+        if (err?.status !== 429 || attempt >= 8) throw err;
+        const wait = Math.min(2000 * 2 ** attempt, 30000);
+        process.stdout.write(`Rate limited by the server, waiting ${wait / 1000}s…\n`);
+        await sleep(wait);
+      }
+    }
+  };
+  return pb;
+}
+
 async function ensureUser() {
-  const admin = new PocketBase(url);
+  const admin = client();
   await admin.collection("_superusers").authWithPassword(env("PB_ADMIN_EMAIL"), env("PB_ADMIN_PASSWORD"));
   const existing = await admin.collection("users").getList(1, 1, { filter: admin.filter("email = {:email}", { email }) });
   if (existing.items.length) return;
@@ -73,8 +95,7 @@ async function ensureUser() {
 async function main() {
   if (args.has("--create-user")) await ensureUser();
 
-  const pb = new PocketBase(url);
-  pb.autoCancellation(false);
+  const pb = client();
   let auth;
   try {
     auth = await pb.collection("users").authWithPassword(email, password);
@@ -107,6 +128,17 @@ async function main() {
 
   const existing = await pb.collection("schedules").getFullList({ filter: byName(SCHEDULE_NAME) });
   if (existing.length) {
+    const scheduleId = existing[0].id;
+    const plans = await pb.collection("day_plans").getFullList({ filter: pb.filter("schedule = {:id}", { id: scheduleId }) });
+    const slots = await pb.collection("plan_slots").getFullList({ filter: pb.filter("day_plan.schedule = {:id}", { id: scheduleId }) });
+    const expectedSlots = DAY_KCAL.reduce((n, _, i) => n + (i < 5 ? WEEKDAY_SLOTS : WEEKEND_SLOTS).length, 0);
+    if (plans.length !== DAY_KCAL.length || slots.length !== expectedSlots) {
+      console.error(
+        `"${SCHEDULE_NAME}" exists but is incomplete (${plans.length} day plans, ${slots.length} slots), ` +
+          "probably from an interrupted run. Run again with --reset to re-seed it.",
+      );
+      process.exit(1);
+    }
     console.log(`"${SCHEDULE_NAME}" already exists for ${email}; nothing to do (use --reset to re-seed).`);
     return;
   }
