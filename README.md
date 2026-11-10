@@ -78,7 +78,7 @@ npm test
 ## Milestones
 
 - **M0:** scaffold, backend schema, dev seed (done)
-- **M1:** domain calculations + tests
+- **M1:** domain calculations + tests (done)
 - **M2:** Library
 - **M3:** Schedules editor
 - **M4:** Today and slot confirmation

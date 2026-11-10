@@ -53,6 +53,10 @@
     "testPathIgnorePatterns": [
       "/node_modules/",
       "/.expo/"
+    ],
+    "testMatch": [
+      "**/*.test.ts",
+      "**/*.test.tsx"
     ]
   }
 }

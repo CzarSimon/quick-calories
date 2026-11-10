@@ -55,7 +55,7 @@ Every collection, child collections included, has its own required `user` relati
 
 ## 3. Lifecycle
 - **Microcycle start:** happens on app open or a background refresh when today ≥ the next microcycle start. Steps:
-  1. Compute body weight from HealthKit as the mean of all samples in the previous microcycle (fallback chain per PRD §4).
+  1. Compute body weight from HealthKit as the average over the previous microcycle (fallback chain per PRD §4).
   2. Create the `microcycles` row.
   3. Create every `day_log` with its `base_targets`, so the Week view shows the whole microcycle. Each day's `log_slots` and `log_entries` are created from the active schedule when its `day_log` is created.
 - **Day close:** idempotent; runs on app open or background refresh for every unclosed day before today.
@@ -73,17 +73,22 @@ Every collection, child collections included, has its own required `user` relati
   - P = override ?? protein_target × bw
   - F = override ?? fat_target × bw
   - C = override ?? (kcal − 4P − 9F) / 4
-  - It returns the imbalance: kcal − (4P + 4C + 9F). While carbs are derived they absorb protein/fat changes, so the imbalance is 0 (gram rounding ignored). It becomes non-zero when carbs are set by hand, or when protein + fat alone exceed the kcal target. A non-zero imbalance can only be saved if it equals `accepted_imbalance_kcal`.
+  - It returns the imbalance: (4P + 4C + 9F) − kcal, so positive = surplus and negative = deficit. While carbs are derived they absorb protein/fat changes, so the imbalance is 0 (gram rounding ignored). It becomes non-zero when carbs are set by hand, or when protein + fat alone exceed the kcal target. A non-zero imbalance can only be saved if it equals `accepted_imbalance_kcal`.
   - Overrides are stored in g/kg so they scale with body weight. Carbs use an absolute override.
-- **spreadAdjustment(total, days):** `even` splits the total over included days. `custom` uses per-day amounts that must sum to the total (validated). A deficit comes out of fat above its floor, then out of carbs down to the carb floor; protein is untouched. The same function runs for surplus.
-- **redistribute(balance, futureDays, settings):**
+  - The returned targets carry the planned intake: the entered kcal plus any accepted imbalance. An accepted surplus or deficit is therefore part of the day's target and of the microcycle goal, and eating to plan leaves the balance at 0.
+- **spreadAdjustment(total, days, mode):** `even` splits the total into whole-kcal shares over the included days; leftover kcal go to the last included days. `custom` uses per-day amounts and reports the difference when they don't sum to the total.
+- **buildBaseTargets(plans, schedule, bw, settings):** derives each day's macros, then applies its share of the adjustment. A deficit comes out of fat above its floor, then out of carbs down to the carb floor; protein is untouched. A surplus goes to carbs. The part of a deficit that the floors don't allow is reported as unapplied, and the editor must show it. For a mid-microcycle schedule switch, take the remaining days of the new schedule's base targets; per-day shares stay as they are.
+- **redistribute(balance, futureBaseDays, bw, settings):**
+  - The balance is Σ(eaten − **base** target) over closed days (`cumulativeBalance`), never against redistributed targets, and the remaining days are always recomputed from their base targets. Otherwise the same kcal would be corrected twice.
   - The amount to correct is −balance.
   - It is spread in proportion to each day's base kcal, then water-filled under two limits: each day's cap (± max_daily_change_pct of base kcal) and its floor capacity (fat down to floor, then carbs down to floor).
   - When adding energy, all of it goes to carbs.
   - The remainder that can't be placed is stored as `unrecovered`.
-  - kcal is rounded to 10 and grams to 1; the rounding residue goes to the last day.
-- **projectDay(log):** consumed = confirmed/adjusted entries; projected = consumed + pending planned entries; open-slot budget = targets − projected (per macro).
+  - Changes are multiples of 10 kcal and grams are whole; the rounding residue goes to the last days that still have room. A balance under 10 kcal moves nothing.
+- **projectDay(slots, targets):** consumed = entries in confirmed/adjusted slots, plus anything logged ad hoc; projected = consumed + planned entries in pending slots; skipped slots count for nothing. Remaining = targets − projected (per macro), and it is the open-slot budget while an open slot has nothing logged.
 - **previewRedistribution(today):** runs `redistribute` with today's projected value treated as final, used for "at this rate, tomorrow → 3,420".
+- **Body weight:** `averageWeight` is the mean of daily means over the previous microcycle (several weigh-ins on one day count once), rounded to 0.1 kg. `resolveBodyWeight` falls back to the last weight used, then the manual value.
+- **Date math:** `microcycleFor(date, anchor, length)` and helpers work on `YYYY-MM-DD` strings and never touch time zones.
 - **microcycleDayLabel(microcycle):** weekday names if length = 7 and the anchor is a Monday, otherwise "Day n".
 
 ## 5. Notifications
@@ -144,5 +149,8 @@ Body weight 82 kg, default settings (protein 2.0 g/kg, fat 0.8 g/kg, carb floor 
 - Sunday 3,100 → 2,640 kcal (carbs 463 → 348 g). Unrecovered: +340 kcal.
 
 **Adjustment spread, −3,500 kcal microcycle, Tuesday marked maintenance**
-- Even across the 6 included days: −583 / −583 / −584 … (residue on the last day); Tuesday 0.
+- Even across the 6 included days: Mon −583, Wed −583, Thu −583, Fri −583, Sat −584, Sun −584; Tuesday 0.
 - Each day's cut comes from fat above floor (none by default), then carbs.
+- With the default 4 g/kg carb floor, Sat and Sun (3,100 kcal, 463 g carbs) can only lose (463 − 328) × 4 = 540 kcal, so 44 kcal on each is unapplied: the cut reaches −3,412, not −3,500.
+
+These examples are covered by the tests in `app/src/domain/__tests__/`.

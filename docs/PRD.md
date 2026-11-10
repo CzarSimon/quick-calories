@@ -41,7 +41,7 @@ Kcal is primary; macros derive from it, using **body weight (BW)** = average of 
 ## 5. Weekly (microcycle) goal & auto-redistribution
 - **Maintenance** = sum of active schedule's daily kcal targets (the day targets are maintenance-level fuel). **Weekly goal** = maintenance ± adjustment.
 - **Adjustment distribution**: by default spread **evenly** across all days of the cycle (e.g. −3,500/week → −500/day). Editable per day: mark days as maintenance (0 share, e.g. Tuesday key session) and the adjustment lands only on the remaining selected days (e.g. Mon/Wed/Fri), evenly by default with optional manual amounts per day that must sum to the total. The adjustment is applied to carbs/fat via the same macro logic as §3 (protein unchanged, floors respected).
-- Running balance = Σ(consumed) − Σ(targets) for completed days.
+- Running balance = Σ(consumed) − Σ(planned targets, before redistribution) for completed days.
 - **Auto-redistribution** applies to days after today (today's own target is fixed once the day starts):
   - Protein never changes.
   - An overshoot is removed first from fat above its floor, then from carbs down to a **carb floor** (default 4 g/kg, configurable).
