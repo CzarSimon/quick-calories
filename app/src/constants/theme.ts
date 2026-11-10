@@ -2,6 +2,8 @@
  * Colour tokens, matching docs/mockups/index.html. Carbs are the "fuel" accent.
  */
 
+import { Platform } from 'react-native';
+
 export const Colors = {
   light: {
     text: '#13202B',
@@ -50,3 +52,6 @@ export const Spacing = {
   five: 32,
   six: 64,
 } as const;
+
+/** The web build (development and UI tests only) floats its tab bar over the top of tab screens. */
+export const TabScreenTopInset = Platform.OS === 'web' ? 56 : 0;

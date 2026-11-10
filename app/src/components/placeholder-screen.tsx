@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Spacing, TabScreenTopInset } from '@/constants/theme';
 
 type Props = {
   title: string;
@@ -45,7 +45,7 @@ export function PlaceholderScreen({ title, eyebrow, milestone, description, head
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  content: { padding: Spacing.three, gap: Spacing.three },
+  content: { padding: Spacing.three, paddingTop: Spacing.three + TabScreenTopInset, gap: Spacing.three },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: Spacing.two },
   headerText: { flexShrink: 1, gap: Spacing.one },
   card: { borderRadius: 16, padding: Spacing.three, gap: Spacing.two },

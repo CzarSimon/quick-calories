@@ -114,7 +114,7 @@ Every collection, child collections included, has its own required `user` relati
   - day bars of target vs actual, with base and redistributed targets
   - microcycle goal vs running balance, unrecovered balance
   - body weight used this microcycle and the trend of microcycle averages
-- **Library:** Foods / Meals segments, search, recents; food form; meal builder (add foods × qty with live totals).
+- **Library:** Foods / Meals segments, search; food form; meal builder (add foods × qty with live totals). Deleting a food or meal archives it, so meals, plans and logs that use it keep working. Sorting by recent or frequent use comes with logging (M4).
 - **Schedules:**
   - list with labels and an active badge; duplicate, delete, activate
   - editor:

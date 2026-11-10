@@ -61,6 +61,8 @@ The app talks to production by default. To use a local backend in the simulator,
 
 The app uses native modules, so it runs in a development build, not Expo Go. See [`docs/RELEASE.md`](docs/RELEASE.md) for building and installing it on your iPhone.
 
+The `web` platform in `app/app.json` exists only for development and UI checks in a browser (`npx expo start --web`); the product is the iOS app.
+
 Checks (from `app/`):
 
 ```bash
@@ -79,7 +81,7 @@ npm test
 
 - **M0:** scaffold, backend schema, dev seed (done)
 - **M1:** domain calculations + tests (done)
-- **M2:** Library
+- **M2:** Library (done)
 - **M3:** Schedules editor
 - **M4:** Today and slot confirmation
 - **M5:** Notifications

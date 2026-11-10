@@ -29,7 +29,12 @@
       "reactCompiler": true
     },
     "platforms": [
-      "ios"
-    ]
+      "ios",
+      "web"
+    ],
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    }
   }
 }

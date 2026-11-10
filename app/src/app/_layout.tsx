@@ -24,6 +24,8 @@ function RootNavigator() {
       <Stack.Protected guard={isLoggedIn}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="settings" options={{ presentation: 'modal', headerShown: true, title: 'Settings' }} />
+        <Stack.Screen name="food/[id]" options={{ headerShown: true, headerBackTitle: 'Library' }} />
+        <Stack.Screen name="meal/[id]" options={{ headerShown: true, headerBackTitle: 'Library' }} />
       </Stack.Protected>
       <Stack.Protected guard={!isLoggedIn}>
         <Stack.Screen name="login" />
