@@ -54,10 +54,16 @@ Every collection, child collections included, has its own required `user` relati
 **Terminology / future periodisation:** the code and schema use the sport-science terms throughout (`microcycle`, never "cycle" or "week"). `mesocycles` (name, start/end, goal, notes) and `macrocycles` are **only named in the design** as future parents. An optional `microcycles.mesocycle` relation will be added together with the `mesocycles` collection; no tables or UI are built in v1. The domain module puts periodisation types in `src/domain/periodisation.ts` so meso/macro can be added later without renaming.
 
 ## 3. Lifecycle
-- **Microcycle start:** happens on app open or a background refresh when today ≥ the next microcycle start. Steps:
-  1. Compute body weight from HealthKit as the average over the previous microcycle (fallback chain per PRD §4).
-  2. Create the `microcycles` row.
-  3. Create every `day_log` with its `base_targets`, so the Week view shows the whole microcycle. Each day's `log_slots` and `log_entries` are created from the active schedule when its `day_log` is created.
+- **Day start (implemented in M4):** the first time the app is open on a date, it creates what is missing, in this order:
+  1. The `microcycles` row for the microcycle that contains the date, with the body weight locked for it (HealthKit average from M6; until then the last weight used, else the fallback from Settings).
+  2. The `day_log` for the date, with `base_targets` from the active schedule's day plan. `targets` equals `base_targets` until redistribution exists (M6).
+  3. The day's `log_slots` and `log_entries`, snapshotted from the plan.
+- **Future days are not stored.** They are previews computed from the active schedule (and, from M6, the running balance). This replaces the earlier idea of creating every day log at microcycle start, which would have frozen the plan for the week on Monday.
+- **Today follows the plan while a slot is untouched.** Until a day is closed, each time Today loads it is reconciled with the active schedule (`reconcileDayLog`):
+  - a slot that is still pending with nothing logged by hand takes over plan changes (name, time, items), and is removed if the plan drops it;
+  - a slot that was confirmed, adjusted, skipped or logged by hand never changes;
+  - new plan slots are added; replacing a day's plan slots does not duplicate a meal that was already handled;
+  - the day's targets follow a changed kcal target or a switched schedule.
 - **Day close:** idempotent; runs on app open or background refresh for every unclosed day before today.
   1. Mark the day closed.
   2. Recompute `cumulative_balance` from all closed days in the microcycle.
@@ -104,12 +110,14 @@ Every collection, child collections included, has its own required `user` relati
 
 ## 6. Screens (tabs: Today · Week · Library · Schedules; Settings from the header)
 - **Today:**
-  - kcal ring showing consumed / projected / target
-  - C / P / F bars, each with a consumed segment, a projected segment and a target marker
-  - an "Open budget" card for dinner
-  - a slot timeline with status chips; tapping a slot opens the slot sheet
-  - a preview line: "Tomorrow: 3,600 → 3,420"
-- **Slot sheet:** "Ate as planned", per-item quantity steppers, remove item, add item (library search or quick-create food), skip.
+  - kcal eaten against the target, with a bar showing eaten, still planned, and the target
+  - C / P / F bars with the same three parts
+  - a "Left for dinner" card for the first open slot with nothing logged: remaining kcal and macros, and a button to log it
+  - "Confirm N earlier meals as planned" when two or more due slots are unconfirmed
+  - the day's slots with status (Planned, Unconfirmed, Confirmed, Adjusted, Skipped, Open, Logged) and an "Ate as planned" button on each pending planned slot
+  - "Previous day" to review or finish an earlier day
+  - the "tomorrow → …" preview line arrives with redistribution (M6)
+- **Log slot:** the slot's items with typed or stepped quantities, remove, add a meal or food from the library; what the meal leaves for the rest of the day; "Ate as planned" / "Save what I ate", "Skip this slot", and "Mark as not eaten yet". Changing a quantity scales the stored nutrition snapshot.
 - **Week:**
   - day bars of target vs actual, with base and redistributed targets
   - microcycle goal vs running balance, unrecovered balance

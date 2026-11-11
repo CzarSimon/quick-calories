@@ -83,7 +83,7 @@ npm test
 - **M1:** domain calculations + tests (done)
 - **M2:** Library (done)
 - **M3:** Schedules editor and Settings (done)
-- **M4:** Today and slot confirmation
+- **M4:** Today and slot confirmation (done)
 - **M5:** Notifications
 - **M6:** HealthKit, microcycles, redistribution, Week
 - **M7:** Offline hardening

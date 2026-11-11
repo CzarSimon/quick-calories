@@ -54,9 +54,10 @@ export function useSaveSettings() {
 
 /**
  * Body weight for macro derivation: the weight locked on the latest microcycle, else the manual
- * fallback from settings. Null when neither exists yet.
+ * fallback from settings. Null when neither exists yet. `source` says which one it is, in the
+ * terms a new microcycle records it with.
  */
-export function useBodyWeight(): { bwKg: number | null; isLoading: boolean } {
+export function useBodyWeight(): { bwKg: number | null; source: 'previous' | 'manual' | null; isLoading: boolean } {
   const { settings, isLoading: settingsLoading } = useSettings();
   const latest = useQuery({
     queryKey: LATEST_MICROCYCLE_KEY,
@@ -65,5 +66,9 @@ export function useBodyWeight(): { bwKg: number | null; isLoading: boolean } {
   });
   const fromMicrocycle = latest.data?.bw_kg && latest.data.bw_kg > 0 ? latest.data.bw_kg : null;
   const fallback = settings.fallback_weight_kg > 0 ? settings.fallback_weight_kg : null;
-  return { bwKg: fromMicrocycle ?? fallback, isLoading: settingsLoading || latest.isLoading };
+  return {
+    bwKg: fromMicrocycle ?? fallback,
+    source: fromMicrocycle ? 'previous' : fallback ? 'manual' : null,
+    isLoading: settingsLoading || latest.isLoading,
+  };
 }

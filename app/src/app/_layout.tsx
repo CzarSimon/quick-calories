@@ -29,6 +29,7 @@ function RootNavigator() {
         <Stack.Screen name="schedule/[id]" options={{ headerShown: true, headerBackTitle: 'Schedules' }} />
         <Stack.Screen name="day-plan/[id]" options={{ headerShown: true, headerBackTitle: 'Schedule' }} />
         <Stack.Screen name="plan-slot/[id]" options={{ headerShown: true, headerBackTitle: 'Day' }} />
+        <Stack.Screen name="log-slot/[id]" options={{ headerShown: true, headerBackTitle: 'Today' }} />
       </Stack.Protected>
       <Stack.Protected guard={!isLoggedIn}>
         <Stack.Screen name="login" />
