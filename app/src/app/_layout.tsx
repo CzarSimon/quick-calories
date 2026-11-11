@@ -1,17 +1,23 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { useReminders } from '@/hooks/use-reminders';
+import { queryClient } from '@/lib/query-client';
+import { initReminders } from '@/lib/reminders';
 
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+// As early as possible, so a tap on a notification that starts the app is not missed.
+initReminders();
+
 
 function RootNavigator() {
   const { ready, isLoggedIn } = useAuth();
+  useReminders(ready ? isLoggedIn : null);
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();

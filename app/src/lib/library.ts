@@ -10,6 +10,7 @@ import { useMemo } from 'react';
 
 import { buildLibrary, type Library } from '@/lib/library-model';
 import { currentUserId, pb } from '@/lib/pocketbase';
+import { LOADER_STALE_MS, queryClient } from '@/lib/query-client';
 import type { FoodRecord, FoodUnit, MealItemRecord, MealRecord } from '@/lib/types';
 
 const KEYS = {
@@ -20,13 +21,26 @@ const KEYS = {
 
 export { buildLibrary, matchesSearch, type Library, type Meal, type MealItem } from '@/lib/library-model';
 
+const QUERIES = {
+  foods: { queryKey: KEYS.foods, queryFn: () => pb.collection('foods').getFullList<FoodRecord>() },
+  meals: { queryKey: KEYS.meals, queryFn: () => pb.collection('meals').getFullList<MealRecord>() },
+  mealItems: { queryKey: KEYS.mealItems, queryFn: () => pb.collection('meal_items').getFullList<MealItemRecord>() },
+};
+
+/** The library for code outside React (reminders). Reuses fresh cached data. */
+export async function loadLibrary() {
+  const [foods, meals, mealItems] = await Promise.all([
+    queryClient.fetchQuery({ ...QUERIES.foods, staleTime: LOADER_STALE_MS }),
+    queryClient.fetchQuery({ ...QUERIES.meals, staleTime: LOADER_STALE_MS }),
+    queryClient.fetchQuery({ ...QUERIES.mealItems, staleTime: LOADER_STALE_MS }),
+  ]);
+  return buildLibrary(foods, meals, mealItems);
+}
+
 export function useLibrary(): Library {
-  const foods = useQuery({ queryKey: KEYS.foods, queryFn: () => pb.collection('foods').getFullList<FoodRecord>() });
-  const meals = useQuery({ queryKey: KEYS.meals, queryFn: () => pb.collection('meals').getFullList<MealRecord>() });
-  const mealItems = useQuery({
-    queryKey: KEYS.mealItems,
-    queryFn: () => pb.collection('meal_items').getFullList<MealItemRecord>(),
-  });
+  const foods = useQuery(QUERIES.foods);
+  const meals = useQuery(QUERIES.meals);
+  const mealItems = useQuery(QUERIES.mealItems);
 
   const built = useMemo(
     () => buildLibrary(foods.data ?? [], meals.data ?? [], mealItems.data ?? []),

@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { currentUserId, pb } from '@/lib/pocketbase';
+import { LOADER_STALE_MS, queryClient } from '@/lib/query-client';
 import type { MicrocycleRecord, SettingsRecord } from '@/lib/types';
 
 export type SettingsValues = Omit<SettingsRecord, 'id' | 'user' | 'created' | 'updated'>;
@@ -25,11 +26,36 @@ export const DEFAULT_SETTINGS: SettingsValues = {
 const SETTINGS_KEY = ['settings'] as const;
 const LATEST_MICROCYCLE_KEY = ['microcycles', 'latest'] as const;
 
+const settingsQuery = {
+  queryKey: SETTINGS_KEY,
+  queryFn: async () => (await pb.collection('settings').getList<SettingsRecord>(1, 1)).items[0] ?? null,
+};
+const latestMicrocycleQuery = {
+  queryKey: LATEST_MICROCYCLE_KEY,
+  queryFn: async () =>
+    (await pb.collection('microcycles').getList<MicrocycleRecord>(1, 1, { sort: '-start_date' })).items[0] ?? null,
+};
+
+type Weight = { bwKg: number | null; source: 'previous' | 'manual' | null };
+
+function pickWeight(latest: MicrocycleRecord | null | undefined, settings: SettingsValues): Weight {
+  const fromMicrocycle = latest?.bw_kg && latest.bw_kg > 0 ? latest.bw_kg : null;
+  const fallback = settings.fallback_weight_kg > 0 ? settings.fallback_weight_kg : null;
+  return { bwKg: fromMicrocycle ?? fallback, source: fromMicrocycle ? 'previous' : fallback ? 'manual' : null };
+}
+
+/** Settings and body weight for code outside React (reminders). Reuses fresh cached data. */
+export async function loadSettingsAndWeight(): Promise<{ settings: SettingsValues; weight: Weight }> {
+  const [record, latest] = await Promise.all([
+    queryClient.fetchQuery({ ...settingsQuery, staleTime: LOADER_STALE_MS }),
+    queryClient.fetchQuery({ ...latestMicrocycleQuery, staleTime: LOADER_STALE_MS }),
+  ]);
+  const settings = (record ?? DEFAULT_SETTINGS) as SettingsValues;
+  return { settings, weight: pickWeight(latest, settings) };
+}
+
 export function useSettings() {
-  const query = useQuery({
-    queryKey: SETTINGS_KEY,
-    queryFn: async () => (await pb.collection('settings').getList<SettingsRecord>(1, 1)).items[0] ?? null,
-  });
+  const query = useQuery(settingsQuery);
   const record = query.data ?? null;
   return {
     settings: (record ?? DEFAULT_SETTINGS) as SettingsValues,
@@ -57,18 +83,8 @@ export function useSaveSettings() {
  * fallback from settings. Null when neither exists yet. `source` says which one it is, in the
  * terms a new microcycle records it with.
  */
-export function useBodyWeight(): { bwKg: number | null; source: 'previous' | 'manual' | null; isLoading: boolean } {
+export function useBodyWeight(): Weight & { isLoading: boolean } {
   const { settings, isLoading: settingsLoading } = useSettings();
-  const latest = useQuery({
-    queryKey: LATEST_MICROCYCLE_KEY,
-    queryFn: async () =>
-      (await pb.collection('microcycles').getList<MicrocycleRecord>(1, 1, { sort: '-start_date' })).items[0] ?? null,
-  });
-  const fromMicrocycle = latest.data?.bw_kg && latest.data.bw_kg > 0 ? latest.data.bw_kg : null;
-  const fallback = settings.fallback_weight_kg > 0 ? settings.fallback_weight_kg : null;
-  return {
-    bwKg: fromMicrocycle ?? fallback,
-    source: fromMicrocycle ? 'previous' : fallback ? 'manual' : null,
-    isLoading: settingsLoading || latest.isLoading,
-  };
+  const latest = useQuery(latestMicrocycleQuery);
+  return { ...pickWeight(latest.data, settings), isLoading: settingsLoading || latest.isLoading };
 }

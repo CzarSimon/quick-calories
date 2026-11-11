@@ -3,8 +3,9 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
-import { useLibrary } from '@/lib/library';
+import { loadLibrary, useLibrary } from '@/lib/library';
 import { currentUserId, pb } from '@/lib/pocketbase';
+import { LOADER_STALE_MS, queryClient } from '@/lib/query-client';
 import { buildSchedules, copyName, type Day, type Schedule } from '@/lib/schedules-model';
 import type {
   DayPlanRecord,
@@ -30,13 +31,36 @@ function invalidate(queryClient: QueryClient, ...keys: (keyof typeof KEYS)[]) {
   return Promise.all(keys.map((key) => queryClient.invalidateQueries({ queryKey: KEYS[key] })));
 }
 
+const QUERIES = {
+  schedules: { queryKey: KEYS.schedules, queryFn: () => pb.collection('schedules').getFullList<ScheduleRecord>() },
+  labels: { queryKey: KEYS.labels, queryFn: () => pb.collection('labels').getFullList<LabelRecord>({ sort: 'name' }) },
+  dayPlans: { queryKey: KEYS.dayPlans, queryFn: () => pb.collection('day_plans').getFullList<DayPlanRecord>() },
+  slots: { queryKey: KEYS.slots, queryFn: () => pb.collection('plan_slots').getFullList<PlanSlotRecord>() },
+  items: { queryKey: KEYS.items, queryFn: () => pb.collection('plan_slot_items').getFullList<PlanSlotItemRecord>() },
+};
+
+/** All schedules for code outside React (reminders). Reuses fresh cached data. */
+export async function loadSchedules(): Promise<Schedule[]> {
+  const fresh = <T,>(query: { queryKey: readonly string[]; queryFn: () => Promise<T> }) =>
+    queryClient.fetchQuery({ ...query, staleTime: LOADER_STALE_MS });
+  const [library, schedules, labels, dayPlans, slots, items] = await Promise.all([
+    loadLibrary(),
+    fresh(QUERIES.schedules),
+    fresh(QUERIES.labels),
+    fresh(QUERIES.dayPlans),
+    fresh(QUERIES.slots),
+    fresh(QUERIES.items),
+  ]);
+  return buildSchedules(schedules, labels, dayPlans, slots, items, library);
+}
+
 export function useSchedules() {
   const library = useLibrary();
-  const schedules = useQuery({ queryKey: KEYS.schedules, queryFn: () => pb.collection('schedules').getFullList<ScheduleRecord>() });
-  const labels = useQuery({ queryKey: KEYS.labels, queryFn: () => pb.collection('labels').getFullList<LabelRecord>({ sort: 'name' }) });
-  const dayPlans = useQuery({ queryKey: KEYS.dayPlans, queryFn: () => pb.collection('day_plans').getFullList<DayPlanRecord>() });
-  const slots = useQuery({ queryKey: KEYS.slots, queryFn: () => pb.collection('plan_slots').getFullList<PlanSlotRecord>() });
-  const items = useQuery({ queryKey: KEYS.items, queryFn: () => pb.collection('plan_slot_items').getFullList<PlanSlotItemRecord>() });
+  const schedules = useQuery(QUERIES.schedules);
+  const labels = useQuery(QUERIES.labels);
+  const dayPlans = useQuery(QUERIES.dayPlans);
+  const slots = useQuery(QUERIES.slots);
+  const items = useQuery(QUERIES.items);
 
   const { foodById, mealById } = library;
   const built = useMemo(

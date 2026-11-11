@@ -98,15 +98,18 @@ Every collection, child collections included, has its own required `user` relati
 - **microcycleDayLabel(microcycle):** weekday names if length = 7 and the anchor is a Monday, otherwise "Day n".
 
 ## 5. Notifications
-- Schedule local notifications for planned slots with `notify` for the next 3 days. This stays under iOS's 64-pending limit.
-- Re-schedule on app open, after any schedule or plan edit, and after day close.
-- Notification category `SLOT`:
-  - "Ate as planned" runs in the background without opening the app. It enqueues a confirm mutation, and the queue syncs when the network is available.
-  - "Adjust" opens the app at the slot sheet.
-- Nudges:
-  - evening, if pending slots remain today (deep-links to a bulk confirm)
-  - morning, for yesterday's pending slots
-- **Time zones:** dates and slot times are local wall-clock values, using the device's time zone.
+Implemented in M5. Device checklist: [`NOTIFICATIONS.md`](NOTIFICATIONS.md).
+
+- **Local only.** The app schedules notifications on the phone (`expo-notifications`); there is no push server. Times are the device's local wall-clock time.
+- **What is scheduled** (`buildReminders`, pure and unit-tested), for today and the next 6 days, at most 60 (iOS allows 64 pending):
+  - one reminder per slot with "Remind me" on: planned slots with items say what the meal is and carry the buttons; open slots say what is left for the meal (today, once the day exists) or "Log what you eat";
+  - an evening nudge when planned meals due by then are unconfirmed;
+  - a morning nudge when the day before has unconfirmed planned meals.
+- **Kept in step by rescheduling.** A notification's text and existence are fixed when it is scheduled, so the set is recomputed and diffed against what is pending (`diffReminders`) on app start, on return to the foreground, about 2 s after the plan or today's log changes, and after a confirmation from a notification. Confirming a meal therefore removes its reminder and, once nothing is left, the nudges.
+- **Buttons** on planned-meal reminders: "Ate as planned" and "Adjust". Tapping the notification or "Adjust" opens the meal; the nudges open Today.
+- **"Ate as planned" is written to the phone first** (`confirm-queue.ts`, AsyncStorage) and then sent. Sending creates the day's log from the plan if the app was not opened that day (`prepareDay`), confirms the slot, and drops the item when the slot is gone or already handled. Without a connection it stays queued and is retried on the next app start, foreground or data change.
+- **iOS limit:** with `opensAppToForeground: false`, iOS runs the handler only while the app is still in memory. If the app was fully closed the tap may not reach the JavaScript; the app then looks for the response on its next start. Until it arrives the meal stays unconfirmed in the app and in the evening nudge. `CONFIRM_OPENS_APP` in `app/src/lib/reminders.ts` switches the button to open the app instead, which always works.
+- **Permission** is asked the first time there is something to remind about. Settings shows the state and links to iOS Settings when it was declined. Signing out cancels every scheduled reminder.
 
 ## 6. Screens (tabs: Today · Week · Library · Schedules; Settings from the header)
 - **Today:**

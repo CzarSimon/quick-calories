@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { AppState, Linking, StyleSheet, View } from 'react-native';
 
 import { FormScreen } from '@/components/form-screen';
 import { ThemedText } from '@/components/themed-text';
@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth';
 import { formatNumber, normalizeTime, parseNumber } from '@/lib/format';
 import { errorMessage } from '@/lib/library';
 import { PB_URL } from '@/lib/pocketbase';
+import { refreshReminders, reminderPermission, type ReminderStatus } from '@/lib/reminders';
 import { useSaveSettings, useSettings, type SettingsValues } from '@/lib/settings';
 
 export default function SettingsScreen() {
@@ -18,6 +19,7 @@ export default function SettingsScreen() {
   return (
     <FormScreen state={isLoading ? 'loading' : 'ready'}>
       <SettingsForm key={record?.id ?? 'defaults'} settings={settings} />
+      <RemindersCard />
       <Card>
         <ThemedText type="eyebrow">Account</ThemedText>
         <ThemedText>{email ?? 'Signed in'}</ThemedText>
@@ -27,6 +29,45 @@ export default function SettingsScreen() {
         <Button label="Sign out" variant="danger" onPress={signOut} />
       </Card>
     </FormScreen>
+  );
+}
+
+function RemindersCard() {
+  const [status, setStatus] = useState<ReminderStatus | null>(null);
+
+  useEffect(() => {
+    const check = () => void reminderPermission().then(setStatus);
+    check();
+    // The answer can change while the user is in the iOS Settings app.
+    const subscription = AppState.addEventListener('change', (state) => state === 'active' && check());
+    return () => subscription.remove();
+  }, []);
+
+  if (status === null || status === 'unsupported') return null;
+  return (
+    <Card>
+      <ThemedText type="eyebrow">Notifications</ThemedText>
+      {status === 'on' ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          Reminders are on. Each slot with “Remind me” notifies you at its time, and you get a nudge for meals left
+          unconfirmed. They are scheduled a week ahead each time you open the app.
+        </ThemedText>
+      ) : status === 'denied' ? (
+        <>
+          <ThemedText type="small" themeColor="textSecondary">
+            Notifications are turned off for Quick Calories in iOS Settings, so no reminders are sent.
+          </ThemedText>
+          <Button label="Open iOS Settings" onPress={() => void Linking.openSettings()} />
+        </>
+      ) : (
+        <>
+          <ThemedText type="small" themeColor="textSecondary">
+            Allow notifications to be reminded at each meal and to confirm it from the notification.
+          </ThemedText>
+          <Button label="Turn on reminders" variant="primary" onPress={() => void refreshReminders({ mayAsk: true }).then(() => reminderPermission().then(setStatus))} />
+        </>
+      )}
+    </Card>
   );
 }
 

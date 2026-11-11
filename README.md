@@ -84,6 +84,6 @@ npm test
 - **M2:** Library (done)
 - **M3:** Schedules editor and Settings (done)
 - **M4:** Today and slot confirmation (done)
-- **M5:** Notifications
+- **M5:** Notifications (done; needs a new development build, see [`docs/NOTIFICATIONS.md`](docs/NOTIFICATIONS.md))
 - **M6:** HealthKit, microcycles, redistribution, Week
 - **M7:** Offline hardening

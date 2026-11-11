@@ -20,8 +20,9 @@ import {
   type LoggedSlot,
 } from '@/lib/daylog-model';
 import { currentUserId, pb } from '@/lib/pocketbase';
-import { useSchedules } from '@/lib/schedules';
-import { useBodyWeight, useSettings } from '@/lib/settings';
+import { LOADER_STALE_MS, queryClient } from '@/lib/query-client';
+import { loadSchedules, useSchedules, type Schedule } from '@/lib/schedules';
+import { loadSettingsAndWeight, useBodyWeight, useSettings, type SettingsValues } from '@/lib/settings';
 import type {
   DayLogRecord,
   IsoDate,
@@ -34,7 +35,7 @@ import type {
 
 export type { EntryDraft, LoggedSlot } from '@/lib/daylog-model';
 
-type DayData = { microcycle: MicrocycleRecord | null; dayLog: DayLogRecord | null; slots: LoggedSlot[] };
+export type DayData = { microcycle: MicrocycleRecord | null; dayLog: DayLogRecord | null; slots: LoggedSlot[] };
 
 const dayKey = (date: IsoDate) => ['day', date] as const;
 const NO_SLOTS: LoggedSlot[] = [];
@@ -145,6 +146,92 @@ async function syncDay(plan: SyncPlan) {
 const sameTargets = (a: MacroTargets | null, b: MacroTargets) =>
   !!a && a.kcal === b.kcal && a.protein_g === b.protein_g && a.fat_g === b.fat_g && a.carbs_g === b.carbs_g;
 
+type PlanInput = {
+  date: IsoDate;
+  position: { startDate: IsoDate; length: number; dayIndex: number };
+  settings: SettingsValues;
+  schedules: Schedule[];
+  weight: { bwKg: number | null; source: 'previous' | 'manual' | null };
+  data: DayData;
+};
+
+/** What has to be written so the day's log exists and matches the active schedule. Null when nothing does. */
+function buildSyncPlan({ date, position, settings, schedules, weight, data }: PlanInput): SyncPlan | null {
+  if (data.dayLog?.closed) return null;
+  const active = schedules.find((s) => s.is_active);
+  const planDay = active?.days.find((d) => d.day_index === position.dayIndex);
+  const bwKg = (data.microcycle?.bw_kg || 0) > 0 ? data.microcycle!.bw_kg : weight.bwKg;
+  if (!active || !planDay || !bwKg) return null;
+
+  const base = buildBaseTargets(active.days, active, bwKg, settings).days[active.days.indexOf(planDay)].base;
+  const dayLog = data.dayLog;
+  const updateDay =
+    !!dayLog && (!sameTargets(dayLog.base_targets, base) || dayLog.schedule !== active.id || dayLog.day_plan !== planDay.id);
+  const changes = reconcileDayLog(data.slots, plannedSlots(planDay));
+  if (data.microcycle && dayLog && !updateDay && !hasChanges(changes)) return null;
+  return {
+    date,
+    microcycle: data.microcycle,
+    newMicrocycle: {
+      start_date: position.startDate,
+      length: position.length,
+      bw_kg: bwKg,
+      bw_source: weight.source === 'previous' ? 'previous' : 'manual',
+    },
+    dayLog,
+    // Redistribution arrives with day closing; until then a day's targets are its base targets.
+    dayFields: { day_index: position.dayIndex, schedule: active.id, day_plan: planDay.id, base_targets: base, targets: base },
+    updateDay,
+    slots: data.slots,
+    changes,
+  };
+}
+
+/**
+ * Outside React: make sure a date's log exists and matches the plan, and return it.
+ * Used when a meal is confirmed from a notification before the app was opened that day.
+ * Only today is kept in step with the plan; an earlier day is created if missing, never rewritten.
+ */
+export async function prepareDay(date: IsoDate, today: IsoDate): Promise<DayData> {
+  const [{ settings, weight }, schedules] = await Promise.all([loadSettingsAndWeight(), loadSchedules()]);
+  const position = microcycleFor(date, settings.microcycle_anchor_date, settings.microcycle_length_days);
+  const load = () => queryClient.fetchQuery({ queryKey: dayKey(date), queryFn: () => fetchDay(date, position.startDate), staleTime: 0 });
+  const data = await load();
+  if (data.dayLog && date !== today) return data;
+  const plan = buildSyncPlan({ date, position, settings, schedules, weight, data });
+  if (!plan) return data;
+  await syncDay(plan);
+  void queryClient.invalidateQueries({ queryKey: ['microcycles'] });
+  return load();
+}
+
+/**
+ * Outside React: mark a planned slot as eaten as planned, by its plan slot id.
+ * Returns false when there is nothing to confirm (the slot is gone or was already handled).
+ */
+export async function confirmPlanSlot(date: IsoDate, planSlotId: string, today: IsoDate): Promise<boolean> {
+  const data = await prepareDay(date, today);
+  const slot = data.slots.find((s) => s.plan_slot === planSlotId);
+  if (!slot) {
+    // The day may be half-built by the Today screen at this very moment. If the plan still has
+    // this slot, fail so the confirmation stays queued and is retried, instead of dropping it.
+    const schedules = await loadSchedules();
+    const planned = schedules.some((s) => s.is_active && s.days.some((d) => d.slots.some((x) => x.id === planSlotId)));
+    if (planned) throw new Error('The day is not ready yet');
+    return false;
+  }
+  if (slot.status !== 'pending' || slot.kind !== 'planned' || slot.entries.length === 0) return false;
+  await pb.collection('log_slots').update(slot.id, { status: 'confirmed' });
+  await queryClient.invalidateQueries({ queryKey: dayKey(date) });
+  return true;
+}
+
+/** Today's and yesterday's logs for code outside React (reminders). Reuses fresh cached data. */
+export async function loadDay(date: IsoDate, settings: SettingsValues): Promise<DayData> {
+  const position = microcycleFor(date, settings.microcycle_anchor_date, settings.microcycle_length_days);
+  return queryClient.fetchQuery({ queryKey: dayKey(date), queryFn: () => fetchDay(date, position.startDate), staleTime: LOADER_STALE_MS });
+}
+
 export type DayState =
   | 'loading'
   | 'error'
@@ -203,30 +290,16 @@ export function useDay(date: IsoDate, today: IsoDate): DayView {
   const canSync = isToday && !loading && !loadError && !!data && !data.dayLog?.closed;
 
   const plan = useMemo<SyncPlan | null>(() => {
-    if (!canSync || !active || !planDay || !bwKg) return null;
-    const base = buildBaseTargets(active.days, active, bwKg, settings).days[active.days.indexOf(planDay)].base;
-    const dayLog = data!.dayLog;
-    const updateDay =
-      !!dayLog && (!sameTargets(dayLog.base_targets, base) || dayLog.schedule !== active.id || dayLog.day_plan !== planDay.id);
-    const changes = reconcileDayLog(data!.slots, plannedSlots(planDay));
-    if (data!.microcycle && dayLog && !updateDay && !hasChanges(changes)) return null;
-    return {
+    if (!canSync || !data) return null;
+    return buildSyncPlan({
       date,
-      microcycle: data!.microcycle,
-      newMicrocycle: {
-        start_date: position.startDate,
-        length: position.length,
-        bw_kg: bwKg,
-        bw_source: weight.source === 'previous' ? 'previous' : 'manual',
-      },
-      dayLog,
-      // Redistribution arrives with day closing; until then a day's targets are its base targets.
-      dayFields: { day_index: position.dayIndex, schedule: active.id, day_plan: planDay.id, base_targets: base, targets: base },
-      updateDay,
-      slots: data!.slots,
-      changes,
-    };
-  }, [canSync, active, planDay, bwKg, settings, data, date, position.startDate, position.length, position.dayIndex, weight.source]);
+      position: { startDate: position.startDate, length: position.length, dayIndex: position.dayIndex },
+      settings,
+      schedules: scheduleData.schedules,
+      weight: { bwKg: weight.bwKg, source: weight.source },
+      data,
+    });
+  }, [canSync, data, date, position.startDate, position.length, position.dayIndex, settings, scheduleData.schedules, weight.bwKg, weight.source]);
 
   const sync = useMutation({
     mutationFn: syncDay,
