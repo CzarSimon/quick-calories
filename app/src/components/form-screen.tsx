@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -12,21 +12,32 @@ type Props = {
   missingText?: string;
 };
 
-/** Scrollable, keyboard-aware body for pushed form screens. */
+/**
+ * Scrollable, keyboard-aware body for pushed form screens.
+ *
+ * iOS does the insetting itself: `contentInsetAdjustmentBehavior` keeps the first field below the
+ * navigation header (which is translucent and overlaps the screen), and
+ * `automaticallyAdjustKeyboardInsets` makes room for the keyboard exactly, without the extra
+ * padding a KeyboardAvoidingView with a guessed header offset leaves above it.
+ */
 export function FormScreen({ children, state = 'ready', missingText }: Props) {
   return (
     <ThemedView style={styles.fill}>
-      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={96}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {state === 'loading' ? <ActivityIndicator style={styles.spinner} /> : null}
-          {state === 'missing' ? (
-            <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-              {missingText}
-            </ThemedText>
-          ) : null}
-          {state === 'ready' ? children : null}
-        </ScrollView>
-      </KeyboardAvoidingView>
+      <ScrollView
+        style={styles.fill}
+        contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
+        automaticallyAdjustKeyboardInsets
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled">
+        {state === 'loading' ? <ActivityIndicator style={styles.spinner} /> : null}
+        {state === 'missing' ? (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
+            {missingText}
+          </ThemedText>
+        ) : null}
+        {state === 'ready' ? children : null}
+      </ScrollView>
     </ThemedView>
   );
 }
