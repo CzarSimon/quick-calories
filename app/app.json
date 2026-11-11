@@ -25,15 +25,29 @@
           "imageWidth": 76
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-notifications",
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Quick Calories reads your body weight to set your daily protein, fat and carbohydrate targets.",
+          "NSHealthUpdateUsageDescription": false,
+          "background": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
     "platforms": [
-      "ios"
+      "ios",
+      "web"
     ],
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
     "extra": {
       "router": {
         "asyncRoutes": {

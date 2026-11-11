@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
+import { clearOutbox } from '@/lib/outbox';
 import { authReady, pb } from '@/lib/pocketbase';
+import { clearCache } from '@/lib/query-client';
 
 type AuthState = {
   ready: boolean;
@@ -48,7 +50,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn: async (userEmail, password) => {
       await pb.collection('users').authWithPassword(userEmail, password);
     },
-    signOut: () => pb.authStore.clear(),
+    signOut: () => {
+      pb.authStore.clear();
+      // The saved data and unsent changes belong to the account that just signed out.
+      void clearCache();
+      void clearOutbox();
+    },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
