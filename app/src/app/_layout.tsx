@@ -1,4 +1,4 @@
-import { QueryClientProvider } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -6,7 +6,8 @@ import { useColorScheme } from 'react-native';
 
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { useReminders } from '@/hooks/use-reminders';
-import { queryClient } from '@/lib/query-client';
+import { useOfflineSync } from '@/hooks/use-offline-sync';
+import { CACHE_MAX_AGE_MS, CACHE_VERSION, cachePersister, queryClient, shouldSaveQuery } from '@/lib/query-client';
 import { initReminders } from '@/lib/reminders';
 
 SplashScreen.preventAutoHideAsync();
@@ -18,6 +19,7 @@ initReminders();
 function RootNavigator() {
   const { ready, isLoggedIn } = useAuth();
   useReminders(ready ? isLoggedIn : null);
+  useOfflineSync(ready ? isLoggedIn : null);
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
@@ -48,11 +50,16 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider client={queryClient} persistOptions={{
+          persister: cachePersister,
+          maxAge: CACHE_MAX_AGE_MS,
+          buster: CACHE_VERSION,
+          dehydrateOptions: { shouldDehydrateQuery: shouldSaveQuery },
+        }}>
         <AuthProvider>
           <RootNavigator />
         </AuthProvider>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </ThemeProvider>
   );
 }

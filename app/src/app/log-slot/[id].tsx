@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { FormScreen } from '@/components/form-screen';
 import { LibraryPicker } from '@/components/library-picker';
+import { OfflineBanner } from '@/components/offline-banner';
 import { QuantityRow } from '@/components/quantity-row';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, NutritionSummary, Notice } from '@/components/ui';
@@ -99,6 +100,7 @@ function SlotForm({ date, slot, others, targets, library }: FormProps) {
 
   return (
     <>
+      <OfflineBanner />
       {isOpen ? (
         <NutritionSummary title={entries.length ? 'Left today after this meal' : 'Left for this meal'} nutrition={roundNutrition(after)} />
       ) : (

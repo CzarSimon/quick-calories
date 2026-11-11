@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 
 import { loadLibrary, useLibrary } from '@/lib/library';
 import { currentUserId, pb } from '@/lib/pocketbase';
-import { LOADER_STALE_MS, queryClient } from '@/lib/query-client';
+import { fetchOrCached } from '@/lib/query-client';
 import { buildSchedules, copyName, type Day, type Schedule } from '@/lib/schedules-model';
 import type {
   DayPlanRecord,
@@ -41,8 +41,7 @@ const QUERIES = {
 
 /** All schedules for code outside React (reminders). Reuses fresh cached data. */
 export async function loadSchedules(): Promise<Schedule[]> {
-  const fresh = <T,>(query: { queryKey: readonly string[]; queryFn: () => Promise<T> }) =>
-    queryClient.fetchQuery({ ...query, staleTime: LOADER_STALE_MS });
+  const fresh = fetchOrCached;
   const [library, schedules, labels, dayPlans, slots, items] = await Promise.all([
     loadLibrary(),
     fresh(QUERIES.schedules),
@@ -74,7 +73,7 @@ export function useSchedules() {
     labels: labels.data ?? [],
     library,
     isLoading: library.isLoading || queries.some((q) => q.isLoading),
-    error: library.error ?? queries.find((q) => q.error)?.error ?? null,
+    error: library.error ?? queries.find((q) => q.error && q.data === undefined)?.error ?? null,
     refetch: () => Promise.all([library.refetch(), ...queries.map((q) => q.refetch())]),
   };
 }

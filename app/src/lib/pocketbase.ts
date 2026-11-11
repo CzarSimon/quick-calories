@@ -2,6 +2,8 @@ import * as SecureStore from 'expo-secure-store';
 import PocketBase, { AsyncAuthStore } from 'pocketbase';
 import { Platform } from 'react-native';
 
+import { reportRequest, setPing } from '@/lib/connectivity';
+
 const AUTH_KEY = 'pb_auth';
 
 // Public configuration, not a secret. Metro inlines EXPO_PUBLIC_* at bundle time, so for a dev
@@ -42,14 +44,20 @@ const send = pb.send.bind(pb);
 pb.send = async <T = unknown>(path: string, options: Parameters<typeof send>[1]): Promise<T> => {
   for (let attempt = 0; ; attempt++) {
     try {
-      return await send<T>(path, options);
+      const result = await send<T>(path, options);
+      reportRequest('response');
+      return result;
     } catch (err) {
+      const status = (err as { status?: number }).status;
+      // Status 0 means no response at all: offline, or the server is unreachable.
+      reportRequest(status === 0 || status === undefined ? 'no-response' : 'response');
       const delay = RETRY_DELAYS_MS[attempt];
-      if ((err as { status?: number }).status !== 429 || delay === undefined) throw err;
+      if (status !== 429 || delay === undefined) throw err;
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 };
+setPing(() => pb.health.check());
 
 /** Resolves once the persisted login (if any) has been loaded into `pb.authStore`. */
 export const authReady: Promise<void> = initialAuth.then(() => undefined);

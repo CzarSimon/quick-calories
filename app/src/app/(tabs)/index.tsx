@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, V
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { NeedsWeight } from '@/components/needs-weight';
+import { OfflineBanner } from '@/components/offline-banner';
 import { ProgressBar } from '@/components/progress-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -59,6 +60,8 @@ export default function TodayScreen() {
               </Pressable>
             </Link>
           </View>
+
+          <OfflineBanner />
 
           <View style={styles.dayNav}>
             <Button label="‹ Previous day" compact onPress={() => setDaysBack(daysBack + 1)} testID="day-prev" />

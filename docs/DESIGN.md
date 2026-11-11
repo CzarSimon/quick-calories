@@ -170,3 +170,17 @@ Body weight 82 kg, default settings (protein 2.0 g/kg, fat 0.8 g/kg, carb floor 
 - With the default 4 g/kg carb floor, Sat and Sun (3,100 kcal, 463 g carbs) can only lose (463 − 328) × 4 = 540 kcal, so 44 kcal on each is unapplied: the cut reaches −3,412, not −3,500.
 
 These examples are covered by the tests in `app/src/domain/__tests__/`.
+
+## 9. Offline behaviour
+Implemented in M7. PocketBase stays the source of truth.
+
+- **Saved data.** The query cache is kept for a week and saved on the phone (AsyncStorage, `qc.query-cache`), including data whose last refresh failed. The app opens with what it last knew and refreshes in the background.
+- **Connection state** is inferred from the app's own requests (`connectivity.ts`): no response means offline, any response means online. While offline the server is pinged every 20 s. There is no network-state library, which would be another native module.
+- **Outbox** (`outbox.ts`, `outbox-model.ts`). Confirming, skipping, reopening and "save what I ate" never call the server directly:
+  1. the change is added to a list stored on the phone (`qc.outbox`), merged with an earlier change to the same slot;
+  2. screens lay the list over the loaded data (`applyOps`), so the change shows at once, survives a restart, and feeds Today's totals, the Week balance and the reminders;
+  3. the list is sent in order: now, on app start, on return to the foreground, and when the server is reachable again. Sending stops at the first change that gets no response, so order is kept.
+- **Refusals.** A change the server refuses (the slot no longer exists, the session ended) can never succeed. It is dropped and a notice says a change could not be saved.
+- **Conflicts.** There is no merge logic: the last change sent wins. The app is used from one phone, and a slot the user has acted on is never rewritten by plan edits.
+- **What needs a connection:** signing in; creating a day's log the first time (except from a notification, which queues the confirmation by plan slot, §5); editing foods, meals, schedules and settings. These show "Can't reach the server".
+- **Sign-out** clears the saved data and the outbox.

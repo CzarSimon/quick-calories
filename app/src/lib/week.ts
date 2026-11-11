@@ -5,8 +5,10 @@ import { useMemo } from 'react';
 
 import { addDays, buildBaseTargets, microcycleFor, type Microcycle } from '@/domain';
 import type { LoggedSlot } from '@/lib/daylog-model';
+import { applyOps } from '@/lib/outbox-model';
+import { useOutbox } from '@/lib/outbox';
 import { pb } from '@/lib/pocketbase';
-import { LOADER_STALE_MS, queryClient } from '@/lib/query-client';
+import { fetchOrCached } from '@/lib/query-client';
 import { useSchedules, type Schedule } from '@/lib/schedules';
 import { useSettings, type SettingsValues } from '@/lib/settings';
 import type { DayLogRecord, IsoDate, LogEntryRecord, LogSlotRecord, MacroTargets, MicrocycleRecord } from '@/lib/types';
@@ -46,7 +48,7 @@ const weekQuery = (microcycle: Microcycle) => ({
 
 /** A microcycle's logs for code outside React. Reuses fresh cached data. */
 export function loadWeek(microcycle: Microcycle): Promise<WeekData> {
-  return queryClient.fetchQuery({ ...weekQuery(microcycle), staleTime: LOADER_STALE_MS });
+  return fetchOrCached(weekQuery(microcycle));
 }
 
 export function useWeekData(microcycle: Microcycle, enabled = true) {
@@ -91,7 +93,8 @@ export function useWeek(today: IsoDate, offset: number, fallbackBwKg: number | n
   const record = query.data?.microcycle ?? null;
   const bwKg = record && record.bw_kg > 0 ? record.bw_kg : fallbackBwKg;
   const active = scheduleData.schedules.find((s) => s.is_active);
-  const logs = query.data?.logs;
+  const outbox = useOutbox();
+  const logs = useMemo(() => query.data?.logs.map((l) => ({ ...l, slots: applyOps(l.slots, outbox) })), [query.data, outbox]);
 
   const summary = useMemo(() => {
     if (!logs) return null;
@@ -112,7 +115,7 @@ export function useWeek(today: IsoDate, offset: number, fallbackBwKg: number | n
     bwKg,
     isCurrent: offset === 0,
     isLoading: settingsLoading || query.isLoading || scheduleData.isLoading,
-    error: query.error ?? scheduleData.error,
+    error: (query.data ? null : query.error) ?? scheduleData.error,
     refetch: () => {
       void query.refetch();
       void scheduleData.refetch();

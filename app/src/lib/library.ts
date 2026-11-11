@@ -10,7 +10,7 @@ import { useMemo } from 'react';
 
 import { buildLibrary, type Library } from '@/lib/library-model';
 import { currentUserId, pb } from '@/lib/pocketbase';
-import { LOADER_STALE_MS, queryClient } from '@/lib/query-client';
+import { fetchOrCached } from '@/lib/query-client';
 import type { FoodRecord, FoodUnit, MealItemRecord, MealRecord } from '@/lib/types';
 
 const KEYS = {
@@ -30,9 +30,9 @@ const QUERIES = {
 /** The library for code outside React (reminders). Reuses fresh cached data. */
 export async function loadLibrary() {
   const [foods, meals, mealItems] = await Promise.all([
-    queryClient.fetchQuery({ ...QUERIES.foods, staleTime: LOADER_STALE_MS }),
-    queryClient.fetchQuery({ ...QUERIES.meals, staleTime: LOADER_STALE_MS }),
-    queryClient.fetchQuery({ ...QUERIES.mealItems, staleTime: LOADER_STALE_MS }),
+    fetchOrCached(QUERIES.foods),
+    fetchOrCached(QUERIES.meals),
+    fetchOrCached(QUERIES.mealItems),
   ]);
   return buildLibrary(foods, meals, mealItems);
 }
@@ -50,7 +50,8 @@ export function useLibrary(): Library {
   return {
     ...built,
     isLoading: foods.isLoading || meals.isLoading || mealItems.isLoading,
-    error: foods.error ?? meals.error ?? mealItems.error ?? null,
+    // Only an error when there is nothing saved to show instead.
+    error: foods.data && meals.data && mealItems.data ? null : (foods.error ?? meals.error ?? mealItems.error ?? null),
     refetch: () => Promise.all([foods.refetch(), meals.refetch(), mealItems.refetch()]),
   };
 }

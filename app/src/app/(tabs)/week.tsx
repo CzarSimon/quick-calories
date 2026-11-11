@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { OfflineBanner } from '@/components/offline-banner';
 import { ProgressBar } from '@/components/progress-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -54,6 +55,7 @@ export default function WeekScreen() {
             </ThemedText>
             <ThemedText type="title">{offset === 0 ? 'This week' : offset === -1 ? 'Last week' : `${-offset} weeks ago`}</ThemedText>
           </View>
+          <OfflineBanner />
           <View style={styles.nav}>
             <Button label="‹ Earlier" compact onPress={() => setOffset(offset - 1)} testID="week-prev" />
             {offset < 0 ? <Button label={offset === -1 ? 'This week ›' : 'Later ›'} compact onPress={() => setOffset(offset + 1)} testID="week-next" /> : null}

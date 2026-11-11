@@ -1,4 +1,4 @@
-# Device checklist: notifications and Apple Health
+# Device checklist: notifications, Apple Health and offline use
 
 Notifications use a native module, so they need a **new development build**. The logic that decides which notifications exist is unit-tested, and the path a lock-screen confirmation takes to the server is tested in a browser. What iOS itself does (delivery, the buttons, running in the background) can only be checked on a phone.
 
@@ -56,3 +56,15 @@ Apple Health also needs the new build. The balance and correction logic is unit-
 | 12 | Settings → Apple Health. | Says the app reads your weight, or offers "Connect Apple Health" if you dismissed the sheet. |
 
 If this week started on the fallback weight (for example because its first day was created from a notification while the phone was locked), it switches to the Health average the next time you open the app, and today's targets follow.
+
+## Offline use (M7)
+
+Offline support adds no native module, so it works in the same build. It was tested in a browser by cutting the connection to the server; flight mode on a real phone is worth one pass.
+
+| # | Do this | Expected |
+|---|---|---|
+| 13 | Open Today, Week, Library and Schedules once while online. Turn on flight mode. | Every tab still shows its data. A banner says the app is offline. |
+| 14 | In flight mode, confirm a meal, adjust another, and log dinner. | Each change shows at once. The banner counts the changes waiting. |
+| 15 | Still in flight mode, force-quit the app and open it again. | The same data and the same changes are there. |
+| 16 | Turn flight mode off and wait up to 20 seconds, or reopen the app. | The banner disappears. The changes are on the server (check from another device or the PocketBase dashboard). |
+| 17 | In flight mode, try to add a food. | "Can't reach the server". Nothing is saved. |

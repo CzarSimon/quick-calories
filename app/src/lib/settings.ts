@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { currentUserId, pb } from '@/lib/pocketbase';
-import { LOADER_STALE_MS, queryClient } from '@/lib/query-client';
+import { fetchOrCached } from '@/lib/query-client';
 import type { MicrocycleRecord, SettingsRecord } from '@/lib/types';
 
 export type SettingsValues = Omit<SettingsRecord, 'id' | 'user' | 'created' | 'updated'>;
@@ -47,8 +47,8 @@ function pickWeight(latest: MicrocycleRecord | null | undefined, settings: Setti
 /** Settings and body weight for code outside React (reminders). Reuses fresh cached data. */
 export async function loadSettingsAndWeight(): Promise<{ settings: SettingsValues; weight: Weight }> {
   const [record, latest] = await Promise.all([
-    queryClient.fetchQuery({ ...settingsQuery, staleTime: LOADER_STALE_MS }),
-    queryClient.fetchQuery({ ...latestMicrocycleQuery, staleTime: LOADER_STALE_MS }),
+    fetchOrCached(settingsQuery),
+    fetchOrCached(latestMicrocycleQuery),
   ]);
   const settings = (record ?? DEFAULT_SETTINGS) as SettingsValues;
   return { settings, weight: pickWeight(latest, settings) };

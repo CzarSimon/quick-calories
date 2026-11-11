@@ -86,4 +86,4 @@ npm test
 - **M4:** Today and slot confirmation (done)
 - **M5:** Notifications (done; needs a new development build, see [`docs/NOTIFICATIONS.md`](docs/NOTIFICATIONS.md))
 - **M6:** HealthKit, microcycles, redistribution, Week (done; needs a new development build)
-- **M7:** Offline hardening
+- **M7:** Offline hardening (done)

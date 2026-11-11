@@ -14,14 +14,16 @@ import {
   hasChanges,
   plannedSlots,
   reconcileDayLog,
-  sameEntries,
   type DayLogChanges,
   type EntryDraft,
   type LoggedSlot,
 } from '@/lib/daylog-model';
 import { averageWeightFromHealth } from '@/lib/health';
+import { replaceEntries } from '@/lib/log-entries';
+import { applyOps } from '@/lib/outbox-model';
+import { enqueueOp, pendingOps, useOutbox } from '@/lib/outbox';
 import { currentUserId, pb } from '@/lib/pocketbase';
-import { LOADER_STALE_MS, queryClient } from '@/lib/query-client';
+import { fetchOrCached, queryClient } from '@/lib/query-client';
 import { loadSchedules, useSchedules, type Schedule } from '@/lib/schedules';
 import { loadSettingsAndWeight, useBodyWeight, useSettings, type SettingsValues } from '@/lib/settings';
 import { loadWeek, planBaseTargets, useWeekData } from '@/lib/week';
@@ -67,20 +69,6 @@ async function fetchDay(date: IsoDate, microcycleStart: IsoDate): Promise<DayDat
       .map((slot) => ({ ...slot, entries: bySlot.get(slot.id) ?? [] }))
       .sort((a, b) => a.time.localeCompare(b.time) || a.sort - b.sort),
   };
-}
-
-/** Make a slot's stored entries match `drafts`, reusing rows by position. */
-async function replaceEntries(slotId: string, existing: LogEntryRecord[], drafts: EntryDraft[]) {
-  const user = currentUserId();
-  for (const [sort, draft] of drafts.entries()) {
-    const row = existing[sort];
-    if (!row) {
-      await pb.collection('log_entries').create({ ...draft, user, log_slot: slotId, sort });
-    } else if (!sameEntries([row], [draft]) || row.origin !== draft.origin || row.sort !== sort) {
-      await pb.collection('log_entries').update(row.id, { ...draft, sort });
-    }
-  }
-  for (const row of existing.slice(drafts.length)) await pb.collection('log_entries').delete(row.id);
 }
 
 type SyncPlan = {
@@ -272,7 +260,9 @@ export async function confirmPlanSlot(date: IsoDate, planSlotId: string, today: 
 /** Today's and yesterday's logs for code outside React (reminders). Reuses fresh cached data. */
 export async function loadDay(date: IsoDate, settings: SettingsValues): Promise<DayData> {
   const position = microcycleFor(date, settings.microcycle_anchor_date, settings.microcycle_length_days);
-  return queryClient.fetchQuery({ queryKey: dayKey(date), queryFn: () => fetchDay(date, position.startDate), staleTime: LOADER_STALE_MS });
+  const data = await fetchOrCached({ queryKey: dayKey(date), queryFn: () => fetchDay(date, position.startDate) });
+  // Include changes made on the phone that the server does not have yet.
+  return { ...data, slots: applyOps(data.slots, pendingOps()) };
 }
 
 export type DayState =
@@ -324,7 +314,9 @@ export function useDay(date: IsoDate, today: IsoDate): DayView {
     queryFn: () => fetchDay(date, position.startDate),
     enabled: !settingsLoading,
   });
-  const data = query.data;
+  // Changes waiting to be sent are shown as if they were already saved.
+  const outbox = useOutbox();
+  const data = useMemo(() => (query.data ? { ...query.data, slots: applyOps(query.data.slots, outbox) } : undefined), [query.data, outbox]);
 
   const active = scheduleData.schedules.find((s) => s.is_active);
   const planDay = active?.days.find((d) => d.day_index === position.dayIndex);
@@ -347,7 +339,8 @@ export function useDay(date: IsoDate, today: IsoDate): DayView {
     settingsLoading ||
     query.isLoading ||
     (isToday && (scheduleData.isLoading || weight.isLoading || week.isLoading || (needsHealth && health.isLoading)));
-  const loadError = query.error ?? (isToday ? (scheduleData.error ?? week.error) : null);
+  // An error only blocks the screen when there is nothing saved to show instead.
+  const loadError = (query.data ? null : query.error) ?? (isToday ? (scheduleData.error ?? (week.data ? null : week.error)) : null);
   const canSync = isToday && !loading && !loadError && !!data && !!week.data && !data.dayLog?.closed;
 
   const plan = useMemo<SyncPlan | null>(() => {
@@ -425,42 +418,22 @@ export function useDay(date: IsoDate, today: IsoDate): DayView {
   };
 }
 
-/** Set the status of one or more slots (confirm, skip, reopen). Shows the change at once. */
+/**
+ * Set the status of one or more slots (confirm, skip, reopen). The change goes through the
+ * outbox: it shows at once, is stored on the phone, and is sent now or when back online.
+ */
 export function useSetSlotStatus(date: IsoDate) {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ slotIds, status }: { slotIds: string[]; status: SlotStatus }) => {
-      for (const id of slotIds) await pb.collection('log_slots').update(id, { status });
-    },
-    onMutate: async ({ slotIds, status }) => {
-      await queryClient.cancelQueries({ queryKey: dayKey(date) });
-      const previous = queryClient.getQueryData<DayData>(dayKey(date));
-      if (previous) {
-        queryClient.setQueryData<DayData>(dayKey(date), {
-          ...previous,
-          slots: previous.slots.map((slot) => (slotIds.includes(slot.id) ? { ...slot, status } : slot)),
-        });
-      }
-      return { previous };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) queryClient.setQueryData(dayKey(date), context.previous);
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: dayKey(date) });
-      void queryClient.invalidateQueries({ queryKey: ['week'] });
+      for (const slotId of slotIds) await enqueueOp({ date, slotId, status });
     },
   });
 }
 
-/** Save what was eaten in a slot: its entries and the resulting status. */
+/** Save what was eaten in a slot: its entries and the resulting status. Goes through the outbox. */
 export function useSaveLogSlot(date: IsoDate) {
-  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ slot, entries, status }: { slot: LoggedSlot; entries: EntryDraft[]; status: SlotStatus }) => {
-      await replaceEntries(slot.id, slot.entries, entries);
-      if (slot.status !== status) await pb.collection('log_slots').update(slot.id, { status });
-    },
-    onSettled: () => Promise.all([queryClient.invalidateQueries({ queryKey: dayKey(date) }), queryClient.invalidateQueries({ queryKey: ['week'] })]),
+    mutationFn: ({ slot, entries, status }: { slot: LoggedSlot; entries: EntryDraft[]; status: SlotStatus }) =>
+      enqueueOp({ date, slotId: slot.id, status, entries }),
   });
 }

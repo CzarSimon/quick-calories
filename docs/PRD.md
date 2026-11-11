@@ -65,7 +65,7 @@ Kcal is primary; macros derive from it, using **body weight (BW)** = average of 
 
 ## 8. Non-functional
 - iOS only, Expo dev build (HealthKit + actionable notifications need native modules).
-- PocketBase auth + per-user data rules. Works offline for confirming/logging with sync when online (scope to confirm in design).
+- PocketBase auth + per-user data rules. Works offline for viewing and for confirming, skipping and logging meals, with sync when online (details in DESIGN.md §9). Editing the library, schedules and settings needs a connection.
 - History preserved: logs store snapshot nutrition values.
 
 ## 9. Out of scope for v1 (planned later)
