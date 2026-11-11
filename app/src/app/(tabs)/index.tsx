@@ -14,7 +14,8 @@ import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import { confirmableSlots, isDue } from '@/lib/daylog-model';
 import { useDay, useSetSlotStatus, type DayView, type LoggedSlot } from '@/lib/daylog';
-import { formatKcal } from '@/lib/format';
+import { useWeek } from '@/lib/week';
+import { formatKcal, formatSignedKcal } from '@/lib/format';
 import { errorMessage } from '@/lib/library';
 
 function formatDate(date: string): string {
@@ -64,15 +65,17 @@ export default function TodayScreen() {
             {daysBack > 0 ? <Button label={daysBack === 1 ? 'Today ›' : 'Next day ›'} compact onPress={() => setDaysBack(daysBack - 1)} testID="day-next" /> : null}
           </View>
 
-          <DayBody day={day} nowTime={daysBack === 0 ? now.time : null} />
+          <DayBody day={day} nowTime={daysBack === 0 ? now.time : null} today={now.date} />
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
 }
 
-function DayBody({ day, nowTime }: { day: DayView; nowTime: string | null }) {
+function DayBody({ day, nowTime, today }: { day: DayView; nowTime: string | null; today: string }) {
   const setStatus = useSetSlotStatus(day.date);
+  // The current microcycle, for what today does to the days that follow.
+  const week = useWeek(today, 0, day.bwKg);
 
   if (day.state === 'loading') {
     return (
@@ -128,6 +131,9 @@ function DayBody({ day, nowTime }: { day: DayView; nowTime: string | null }) {
   }
 
   const { targets, projection, slots } = day;
+  const correction = day.baseTargets ? targets.kcal - day.baseTargets.kcal : 0;
+  const tomorrow = day.isToday ? week.summary?.days.find((d) => d.when === 'future') : undefined;
+  const tomorrowShift = tomorrow?.target && tomorrow.base ? tomorrow.target.kcal - tomorrow.base.kcal : 0;
   const due = confirmableSlots(slots, nowTime);
   const firstOpen = slots.find((s) => s.kind === 'open' && s.status !== 'skipped' && s.entries.length === 0);
   const openSlot = (slot: LoggedSlot) => router.push({ pathname: '/log-slot/[id]', params: { id: slot.id, date: day.date } });
@@ -143,6 +149,11 @@ function DayBody({ day, nowTime }: { day: DayView; nowTime: string | null }) {
             of {formatKcal(targets.kcal)} kcal
           </ThemedText>
         </View>
+        {correction !== 0 && day.baseTargets ? (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.tabular} testID="target-correction">
+            Plan {formatKcal(day.baseTargets.kcal)}, {formatSignedKcal(correction)} to make up for earlier days.
+          </ThemedText>
+        ) : null}
         <ProgressBar consumed={projection.consumed.kcal} projected={projection.projected.kcal} target={targets.kcal} color="text" softColor="line" height={14} />
         <ThemedText type="small" themeColor="textSecondary" style={styles.tabular} testID="kcal-projected">
           {projection.projected.kcal > projection.consumed.kcal
@@ -188,6 +199,14 @@ function DayBody({ day, nowTime }: { day: DayView; nowTime: string | null }) {
           />
         ))}
       </Card>
+      {tomorrow?.target && tomorrow.base ? (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.tabular} testID="tomorrow-preview">
+          {tomorrowShift === 0
+            ? `On course. ${tomorrow.label} stays at ${formatKcal(tomorrow.target.kcal)} kcal.`
+            : `As things stand, ${tomorrow.label} moves from ${formatKcal(tomorrow.base.kcal)} to ${formatKcal(tomorrow.target.kcal)} kcal.`}{' '}
+          It is set when that day starts.
+        </ThemedText>
+      ) : null}
       {setStatus.error ? (
         <ThemedText type="small" themeColor="over">
           {errorMessage(setStatus.error)}

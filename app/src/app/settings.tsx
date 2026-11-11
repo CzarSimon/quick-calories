@@ -8,6 +8,7 @@ import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { formatNumber, normalizeTime, parseNumber } from '@/lib/format';
 import { errorMessage } from '@/lib/library';
+import { healthStatus, requestWeightAccess, type HealthStatus } from '@/lib/health';
 import { PB_URL } from '@/lib/pocketbase';
 import { refreshReminders, reminderPermission, type ReminderStatus } from '@/lib/reminders';
 import { useSaveSettings, useSettings, type SettingsValues } from '@/lib/settings';
@@ -20,6 +21,7 @@ export default function SettingsScreen() {
     <FormScreen state={isLoading ? 'loading' : 'ready'}>
       <SettingsForm key={record?.id ?? 'defaults'} settings={settings} />
       <RemindersCard />
+      <HealthCard />
       <Card>
         <ThemedText type="eyebrow">Account</ThemedText>
         <ThemedText>{email ?? 'Signed in'}</ThemedText>
@@ -65,6 +67,34 @@ function RemindersCard() {
             Allow notifications to be reminded at each meal and to confirm it from the notification.
           </ThemedText>
           <Button label="Turn on reminders" variant="primary" onPress={() => void refreshReminders({ mayAsk: true }).then(() => reminderPermission().then(setStatus))} />
+        </>
+      )}
+    </Card>
+  );
+}
+
+function HealthCard() {
+  const [status, setStatus] = useState<HealthStatus | null>(null);
+  useEffect(() => {
+    void healthStatus().then(setStatus);
+  }, []);
+
+  if (status === null || status === 'unsupported') return null;
+  return (
+    <Card>
+      <ThemedText type="eyebrow">Apple Health</ThemedText>
+      {status === 'asked' ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          Quick Calories reads your body weight from Apple Health and uses last week’s average for this week’s targets. If no
+          weight shows up on the Week tab, allow “Weight” for Quick Calories in the Health app under Sharing → Apps.
+        </ThemedText>
+      ) : (
+        <>
+          <ThemedText type="small" themeColor="textSecondary">
+            Allow Quick Calories to read your body weight, so each week’s targets use last week’s average instead of the
+            fallback weight.
+          </ThemedText>
+          <Button label="Connect Apple Health" variant="primary" onPress={() => void requestWeightAccess().then(setStatus)} />
         </>
       )}
     </Card>

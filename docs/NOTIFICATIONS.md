@@ -1,4 +1,4 @@
-# Notifications: build and device checklist
+# Device checklist: notifications and Apple Health
 
 Notifications use a native module, so they need a **new development build**. The logic that decides which notifications exist is unit-tested, and the path a lock-screen confirmation takes to the server is tested in a browser. What iOS itself does (delivery, the buttons, running in the background) can only be checked on a phone.
 
@@ -43,3 +43,16 @@ npm start
 iOS only runs the app's code for a background button while the app is still in memory. If the tap is lost when the app was force-quit, the meal simply stays unconfirmed (and the evening nudge still catches it), but the button did nothing.
 
 To make the button always work, set `CONFIRM_OPENS_APP = true` in `app/src/lib/reminders.ts`. "Ate as planned" then opens the app and confirms there. No new build is needed for that change, only a reload.
+
+## Apple Health (M6)
+
+Apple Health also needs the new build. The balance and correction logic is unit-tested and was run through a three-day scenario in a browser; reading weight from Health can only be checked on the phone.
+
+| # | Do this | Expected |
+|---|---|---|
+| 9 | Open Today on the new build. | iOS shows the Health sheet asking to read Weight. Allow it. |
+| 10 | Open the Week tab. | "Body weight used" shows a weight. If last week has weigh-ins in Health, the text says it is the average from Apple Health; otherwise it says it is the fallback or carried over. |
+| 11 | Compare that weight with last week's weigh-ins in the Health app (Mon–Sun average, one value per day). | They match to 0.1 kg. |
+| 12 | Settings → Apple Health. | Says the app reads your weight, or offers "Connect Apple Health" if you dismissed the sheet. |
+
+If this week started on the fallback weight (for example because its first day was created from a notification while the phone was locked), it switches to the Health average the next time you open the app, and today's targets follow.

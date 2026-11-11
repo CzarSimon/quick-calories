@@ -49,3 +49,37 @@ export function projectDay(slots: DaySlotInput[], targets: MacroTargets): DayPro
 
   return { consumed, projected, remaining, openBudget: unresolvedOpenSlots > 0 ? remaining : null, pendingSlots };
 }
+
+export type DayOutcome = {
+  /** Confirmed, adjusted and hand-logged entries. */
+  eatenKcal: number;
+  /** Eaten plus planned meals that were never confirmed: they are assumed eaten as planned. */
+  expectedKcal: number;
+  /** False while an open slot has nothing logged: the day's intake is then unknown. */
+  complete: boolean;
+  /** Planned meals with items that are still pending. */
+  unconfirmed: number;
+};
+
+/**
+ * How a day turned out, for the microcycle balance.
+ * An unconfirmed planned meal counts as eaten as planned. An open slot with nothing logged makes
+ * the day incomplete, and an incomplete day is left out of the balance rather than counted as zero.
+ */
+export function dayOutcome(slots: DaySlotInput[]): DayOutcome {
+  let eaten = 0;
+  let pending = 0;
+  let complete = true;
+  let unconfirmed = 0;
+  for (const slot of slots) {
+    if (slot.status === 'skipped') continue;
+    const resolved = slot.status === 'confirmed' || slot.status === 'adjusted';
+    if (!resolved && slot.kind === 'open' && slot.entries.length === 0) complete = false;
+    if (!resolved && slot.kind === 'planned' && slot.entries.length > 0) unconfirmed++;
+    for (const entry of slot.entries) {
+      if (resolved || entry.origin === 'adhoc') eaten += entry.kcal;
+      else pending += entry.kcal;
+    }
+  }
+  return { eatenKcal: eaten, expectedKcal: eaten + pending, complete, unconfirmed };
+}

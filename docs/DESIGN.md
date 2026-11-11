@@ -64,11 +64,15 @@ Every collection, child collections included, has its own required `user` relati
   - a slot that was confirmed, adjusted, skipped or logged by hand never changes;
   - new plan slots are added; replacing a day's plan slots does not duplicate a meal that was already handled;
   - the day's targets follow a changed kcal target or a switched schedule.
-- **Day close:** idempotent; runs on app open or background refresh for every unclosed day before today.
-  1. Mark the day closed.
-  2. Recompute `cumulative_balance` from all closed days in the microcycle.
-  3. Recompute `targets` for all future days **from scratch** (base + redistribute(balance)). It is deterministic, so re-running it is always safe.
-  4. Pending slots in a closed day stay pending (they count as projected only). They show in the history as "unresolved".
+- **Body weight per microcycle (implemented in M6):** when a microcycle's first day is created, its weight is the previous microcycle's average from Apple Health; if that cannot be read (no weigh-ins, no access, or the phone is locked because the day is being created from a notification), the last weight used, then the fallback from Settings. A microcycle that started on a fallback takes the Health average the next time the app is open and can read it. Once the weight comes from Health it does not change for that microcycle.
+- **Balance and correction (implemented in M6; `week-model.ts`):** there is no separate "close" step and no stored balance. Everything is derived from the day logs each time, so going back to finish an earlier day updates the result.
+  - An earlier day's intake is what was confirmed or logged by hand, plus planned meals that were never confirmed (assumed eaten as planned).
+  - An earlier day counts toward the balance only when it is complete. A day with no log, or with an open slot left empty, is unknown, not zero: it is treated as on target and flagged on the Week screen.
+  - Balance = Σ(intake − base target) over the counted earlier days of the microcycle.
+  - **Today's target is fixed when the day is created:** base corrected by `redistribute(balance, [today … last day])`. Later changes to the balance move the days after today, not today. A plan edit today keeps the same kcal correction on the new base.
+  - **Days after today are previews:** `redistribute(balance + today's expected delta, remaining days)`. Today's expected delta assumes an open slot that is still empty ends on target.
+  - What the remaining days cannot absorb is shown as "will not be recovered". Nothing carries into the next microcycle.
+  - `day_logs.closed`, `microcycles.closed`, `cumulative_balance_kcal` and `unrecovered_kcal` exist in the schema but are not written; the values are always computed.
 - **Schedule switch:**
   - Today and future `day_logs` are rebuilt from the new schedule. For today, confirmed or adjusted slots are kept and pending ones are replaced.
   - The microcycle goal = past days' targets + the new schedule's remaining days ± that schedule's adjustment, prorated over its remaining included days.
@@ -119,12 +123,14 @@ Implemented in M5. Device checklist: [`NOTIFICATIONS.md`](NOTIFICATIONS.md).
   - "Confirm N earlier meals as planned" when two or more due slots are unconfirmed
   - the day's slots with status (Planned, Unconfirmed, Confirmed, Adjusted, Skipped, Open, Logged) and an "Ate as planned" button on each pending planned slot
   - "Previous day" to review or finish an earlier day
-  - the "tomorrow → …" preview line arrives with redistribution (M6)
+  - when today's target was corrected: "Plan 3,950, −20 to make up for earlier days"
+  - what today does to tomorrow: "As things stand, Wed moves from 3,600 to 3,580 kcal"
 - **Log slot:** the slot's items with typed or stepped quantities, remove, add a meal or food from the library; what the meal leaves for the rest of the day; "Ate as planned" / "Save what I ate", "Skip this slot", and "Mark as not eaten yet". Changing a quantity scales the stored nutrition snapshot.
 - **Week:**
-  - day bars of target vs actual, with base and redistributed targets
-  - microcycle goal vs running balance, unrecovered balance
-  - body weight used this microcycle and the trend of microcycle averages
+  - the microcycle's dates, with "Earlier" / "Later" to look back
+  - balance so far (or final balance), the microcycle goal, what will not be recovered, and a notice for earlier days that are not counted
+  - every day: plan → corrected target, macros, a bar of eaten and expected against the target, and its state (planned, eaten, incomplete, not logged, including unconfirmed meals)
+  - the body weight used, where it came from, and the weights of the last microcycles
 - **Library:** Foods / Meals segments, search; food form; meal builder (add foods × qty with live totals). Deleting a food or meal archives it, so meals, plans and logs that use it keep working. Sorting by recent or frequent use comes with logging (M4).
 - **Schedules:**
   - list with labels and an active badge
@@ -132,7 +138,7 @@ Implemented in M5. Device checklist: [`NOTIFICATIONS.md`](NOTIFICATIONS.md).
   - day editor: kcal target with derived macros; − / + steppers for each macro with "Reset"; the imbalance notice with "Rebalance carbs" and "Accept surplus/deficit" (saving is blocked until one is chosen); the day's slots with what the planned ones add up to and what is left for open slots; "Copy slots from another day" (replaces this day's slots).
   - slot editor: name, time, planned or open, reminder on/off, and for planned slots the meals (× servings) and foods (× quantity) with a live total.
   - A new schedule starts with every day at one kcal value. Until microcycles exist (M6), macros use the fallback weight from Settings.
-- **Settings:** protein and fat targets and floors, carb floor, largest daily change %, fallback weight, reminder times, account and sign-out. HealthKit permission arrives with M6. Microcycle length is not exposed in the UI.
+- **Settings:** protein and fat targets and floors, carb floor, largest daily change %, fallback weight, reminder times, account and sign-out. An Apple Health card connects body-weight access. Microcycle length is not exposed in the UI.
 
 ## 7. Build milestones
 - **M0:** scaffold Expo app + PocketBase migrations + seed script
