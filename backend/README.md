@@ -41,15 +41,15 @@ results to the operator. Public backend access does not grant deployment access.
 Do not create a replacement backend because SSH or platform repository access
 is unavailable.
 
-## Provisioned state, verified 2026-11-05
+## Current hosted state, verified 2026-11-09
 
 | Setting | Value |
 | --- | --- |
 | Project | `quick-calories` |
 | Public backend URL | `https://quick-calories.pb.simonlilja.eu` |
 | PocketBase runtime | `0.40.4` |
-| Release | `platform-bootstrap-v1`; no application release yet |
-| RAM / CPU ceiling | 128 MiB / 0.5 CPU |
+| Release | Initial migrations deployed from `abb7317`; see `docs/releases/2026-11-09-initial-backend.md` |
+| RAM / CPU ceiling | 256 MiB / 0.5 CPU |
 | Disk admission reservation | 512 MiB; not an enforced filesystem quota |
 | Backup data ceiling | 256 MiB including uploaded files |
 | Backups | Encrypted, first remote backup verified; scheduled every 15 minutes |
@@ -120,13 +120,14 @@ as working. Monitoring emails do not provide application email delivery.
 
 Test anonymous denial, two-user record/file isolation, attempts to assign another
 user's ownership or references, expired sessions, logout, and normal app workflows.
-Test hooks under the 128 MiB RAM and 0.5 CPU limits. Production release files and
+Test hooks under the 256 MiB RAM and 0.5 CPU limits. Production release files and
 the container filesystem are read-only; persistent writes belong in the data
 directory and temporary writes in `/tmp`.
 
 ## Prepare and deploy the initial app release
 
-These are instructions for a future deployment, not commands already run.
+The initial deployment below completed on 2026-11-09. Retain these commands as
+reference; use the subsequent-release workflow for further changes.
 First finish the agreed schema, test the complete app locally, commit the release
 source, and verify that the migration/hook files exactly match that commit.
 The packer records the supplied commit but does not verify Git provenance.
