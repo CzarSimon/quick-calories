@@ -5,6 +5,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 
+/** About 5 % of an iPhone screen's height. */
+const FORM_TOP_EXTRA = 40;
+
 type Props = {
   children: ReactNode;
   /** Shown instead of the form while data loads or when the record is missing. */
@@ -44,7 +47,8 @@ export function FormScreen({ children, state = 'ready', missingText }: Props) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  content: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six },
+  // Extra room at the top: on iOS the translucent header still overlapped the first field slightly.
+  content: { padding: Spacing.three, paddingTop: Spacing.three + FORM_TOP_EXTRA, gap: Spacing.three, paddingBottom: Spacing.six },
   spinner: { marginTop: Spacing.five },
   centered: { textAlign: 'center', marginTop: Spacing.four },
 });
