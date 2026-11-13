@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+
+# Secrets and local env files (keep the secret-free examples)
+.env
+.env.*
+!.env.example
+
+# Local PocketBase binary, data, releases and other runtime state
+/pocketbase
+.local/
