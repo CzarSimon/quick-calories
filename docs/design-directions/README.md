@@ -52,3 +52,29 @@ These are original geometric studies, not a trademark or App Store similarity cl
 ## Recommended first iteration
 
 Start with Fieldnotes' continuous lists and warm restraint, and choose whether its journal-like hierarchy or Split's action-first hierarchy feels faster. Pick the identity independently. Implement Today + logging + library first; then Week and focused schedule editing. No production app, backend or schedule data is changed by this review branch.
+
+## Visuals and validation
+
+- [Compare Today](previews/comparison.png)
+- [Fieldnotes: Today, Library, meal builder](previews/fieldnotes-board.png)
+- [Split: Today, Library, meal builder](previews/split-board.png)
+- [Alternate appearances](previews/appearances.png)
+- [Three identities](previews/identity-studies.png)
+
+Browser verification: snack confirmation keeps projection/allowance stable; undo restores the sample; 1.2× snack recalculates eaten and remaining values; recipe quantities update totals; creating a food returns to the unsaved recipe with its name and quantities intact; saving adds the recipe to the library. All 24 combinations of six screens × two directions × two appearances rendered without content overflow. All six screens in both directions also passed horizontal-overflow checks at a 320 px review viewport. No JavaScript errors. Representative screenshots were inspected visually.
+
+Limits: this is a sample-data browser study, not a native accessibility or production integration test. Dinner selection is a visual preview; lunch saving, existing-item editing and schedule mutations are not implemented in the study. Only the snack confirmation and library creation flows are interactive end to end. No backend tests are needed because no backend or app code changed.
+
+### Starting tokens
+
+| Role | Fieldnotes light / dark | Split light / dark |
+| --- | --- | --- |
+| Background | `#F8F6EF` / `#17241D` | `#F3F4F6` / `#1D2027` |
+| Primary text | `#243E31` / `#F1F0E4` | `#20242D` / `#F0F2ED` |
+| Secondary text | `#687267` / `#B2BEAC` | `#626B79` / `#B5BBC5` |
+| Action | `#2C5540` / `#BED4A6` | `#D8EE4B` / `#D8EE4B` |
+| Text on action | `#FFFDF4` / `#1C2A20` | `#202719` / `#202719` |
+| Action radius | 18 pt | 6 pt |
+| Display type | Native serif, short headings only | SF Pro, semibold/bold |
+
+Use a 4 pt spacing grid, 20 pt screen margins at standard phone width, 44–48 pt action targets, and tabular numerals for quantities. These are starting tokens to translate into the existing theme and UI components after choosing a direction. Review full native text scaling before treating these as final specifications.
