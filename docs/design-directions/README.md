@@ -1,16 +1,18 @@
 # Quick Calories — Fieldnotes refinement
 
-Design exploration based on `claude/modest-brown-lo8k28` at `7b93aa6`, the supplied design-review ZIP, and the current implementation. Fieldnotes and Quick Q were selected by the owner. This is the second design iteration, not a change to the Expo app or its data model.
+Design exploration based on `claude/modest-brown-lo8k28` at `7b93aa6`, the supplied design-review ZIP, and the current implementation. Fieldnotes and Quick Q were selected by the owner. This is the third design iteration, not a change to the Expo app or its data model.
 
 Open `index.html` in a browser. The prototype uses sample data only, with no backend connection. Both directions support Today, Library, meal entry, new food, Week and Schedules. Use the review controls to switch direction, appearance and screen.
 
-## Selected direction — iteration 02
+## Selected direction — iteration 03
 
 - **Fieldnotes + Quick Q** are the chosen visual direction and identity. The earlier Split study remains available for reference.
 - **Ready to log comes first**, immediately below the date/header. All meal rows in **Your day** open that slot's log, including already logged meals for corrections. The list includes all five slots; the top card is a shortcut, not the only entry point.
 - **Available today** replaces “Left for dinner.” The subtitle **After your planned meals** makes the calculation explicit: target − eaten − still planned. It is shared by all unplanned food, not a separate allowance per open meal.
 - Calories and remaining carbs/protein/fat lead a single daily summary. Eaten and still-planned energy appear underneath in one progress bar; macro details and the corrected daily target are in a disclosure. Negative remaining values say **over**, rather than being silently clamped to zero.
 - **+ Log food** lets the sample demonstrate an extra snack. It reduces the shared calorie and macro allowance; it does not silently consume or replace a planned meal. Dinner remains accessible through its own row. The extra row is a design proposal for presenting ad-hoc intake, not a new approved backend concept.
+- **Day details stays collapsed by default.** Opening it shows separate carbs, protein and fat bars: solid for eaten, lighter for still planned, with a target tick and numeric labels. The bars rescale when projected intake exceeds target, preserving the target marker and showing the overage in text.
+- **Settings is visible at the top right of Today.** It opens a styled reference screen covering the existing app settings; the prototype does not alter saved settings or account permissions.
 - **New food retains the existing app layout**: name → five-unit segmented selector (g/ml/piece/slice/serving) → reference amount → nutrition card with calories and a single three-column macro row → Add food. Only colour and surface styling change. The original kcal-from-macros hint and default-unit amount behaviour are reproduced.
 
 Updated previews: [Today + New food](previews/fieldnotes-refinement.png), [New food with the calorie hint](previews/fieldnotes-food-hint.png).
@@ -65,6 +67,11 @@ These are original geometric studies, not a trademark or App Store similarity cl
 The selected design is still a browser prototype. Apply it to Today, meal logging and the library only after the design iteration is settled; then update Week and focused schedule editing. Keep the existing PocketBase backend, domain calculations, notification behaviour and native navigation. New food should retain its existing component order and behaviours when the theme is applied.
 
 ## Visuals and validation
+
+Iteration 03 checks: accordion collapsed on load and return to Today; three macro bars with eaten/planned/target labels; confirmation updates eaten and planned segments; Settings opens and returns to Today; expanded details and Settings fit 320 px in both appearances. No JavaScript errors.
+
+- [Expanded daily allowance and macro bars](previews/fieldnotes-expanded-budget.png)
+- [Settings reference screen](previews/fieldnotes-light-settings.png)
 
 - [Compare Today](previews/comparison.png)
 - [Fieldnotes: Today, Library, meal builder](previews/fieldnotes-board.png)

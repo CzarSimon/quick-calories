@@ -51,3 +51,16 @@
 .phone .original-food-layout>.full{margin-top:18px}
 .split .budget-value{font-weight:700}
 @media(max-width:370px){.remaining-macros strong{font-size:21px}.remaining-macros small{font-size:10px}.budget-value{font-size:42px}.food-nutrition{padding:12px}.unit-segments button{font-size:12px;padding:8px 1px}.original-macro-row{gap:5px}.original-macro-row .unit-input input{padding-left:6px}.original-macro-row .unit-input span{padding-right:5px}}
+.phone .settings-link{font-size:13px;font-weight:600;text-decoration:underline;text-underline-offset:4px;flex-shrink:0;min-width:62px;padding:10px 0}
+.macro-progress-list{padding-top:4px}
+.macro-progress{--macro:#2c5540;--macro-soft:#c6d6c2;margin:14px 0 20px}
+.macro-c{--macro:#9b661f;--macro-soft:#e6d7b8}.macro-f{--macro:#866b91;--macro-soft:#dcd0e1}
+.dark .macro-progress{--macro:#bed4a6;--macro-soft:#526947}.dark .macro-c{--macro:#dfb269;--macro-soft:#6c5738}.dark .macro-f{--macro:#bca1ca;--macro-soft:#64526b}
+.macro-progress>.row{font-size:12px;color:var(--muted)}.macro-progress strong{font-size:13px;font-weight:600;color:var(--ink)}
+.macro-track{position:relative;background:var(--line);height:8px;border-radius:4px;margin:10px 0 9px}
+.macro-track>span{position:absolute;top:0;height:100%;border-radius:4px}
+.macro-track .macro-eaten{background:var(--macro)}.macro-track .macro-planned{background:var(--macro-soft)}
+.macro-track .macro-target{height:14px;top:-3px;width:2px;background:var(--ink);border-radius:0}
+.macro-track-labels{display:flex;flex-wrap:wrap;gap:7px 14px;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.macro-track-labels i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;vertical-align:1px}.solid-key{background:var(--macro)}.soft-key{background:var(--macro-soft)}
+.settings-group{border-bottom:1px solid var(--line);padding:8px 0 14px}.settings-group h3{font-size:16px;margin:12px 0}.settings-group dl{margin:0}.settings-group dl>div{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:14px}.settings-group dt{font-size:12px;letter-spacing:0;font-weight:400;margin:0;color:var(--muted)}.settings-group dd{font-size:12px;text-align:right;line-height:1.5;margin:0;max-width:50%}
