@@ -6,7 +6,9 @@ A personal calorie and macro tracker for a periodised training week. You plan ea
 - Technical design: [`docs/DESIGN.md`](docs/DESIGN.md)
 - Clickable mockup: [`docs/mockups/index.html`](docs/mockups/index.html)
 - Backend hosting and operations: [`backend/README.md`](backend/README.md)
-- First release and phone install: [`docs/RELEASE.md`](docs/RELEASE.md)
+- Releasing the backend and installing on an iPhone: [`docs/RELEASE.md`](docs/RELEASE.md)
+- Device checklist (notifications, Apple Health, offline): [`docs/NOTIFICATIONS.md`](docs/NOTIFICATIONS.md)
+- Design review brief and screenshots: [`docs/design-review/`](docs/design-review/)
 
 ## Repository
 
@@ -77,13 +79,16 @@ npm run lint
 npm test
 ```
 
-## Milestones
+## Status
 
-- **M0:** scaffold, backend schema, dev seed (done)
-- **M1:** domain calculations + tests (done)
-- **M2:** Library (done)
-- **M3:** Schedules editor and Settings (done)
-- **M4:** Today and slot confirmation (done)
-- **M5:** Notifications (done; needs a new development build, see [`docs/NOTIFICATIONS.md`](docs/NOTIFICATIONS.md))
-- **M6:** HealthKit, microcycles, redistribution, Week (done; needs a new development build)
-- **M7:** Offline hardening (done)
+**v0.1 prototype.** Every screen in the design is built: Today, Week, Library, Schedules and Settings, with meal reminders, Apple Health body weight, corrections across the week and offline logging.
+
+- **Backend:** the schema is deployed to production (record in [`docs/releases/`](docs/releases/)). From now on only additive schema changes pass the hosting platform's upgrade gate.
+- **Tests:** 133 unit tests for the calculations and data logic (`cd app && npm test`) and 151 backend access-rule checks (`npm run test:backend`).
+- **Still to verify on an iPhone:** the device checklist in [`docs/NOTIFICATIONS.md`](docs/NOTIFICATIONS.md), which covers notifications, Apple Health and offline use.
+
+**Next**
+- A design review: the brief and screenshots are in [`docs/design-review/`](docs/design-review/).
+- Describe-a-meal entry with AI, using the user's own AI account. This is out of scope for v1 (see the PRD).
+
+How the prototype was built, milestone by milestone, is in [`docs/DESIGN.md`](docs/DESIGN.md) §7.

@@ -1,6 +1,6 @@
 # Quick Calories — Technical Design (v1)
 
-Status: approved design, 2026-11-03. Requirements: [`PRD.md`](PRD.md). Clickable UI mockup: [`mockups/index.html`](mockups/index.html) (also published at https://claude.ai/artifact/RXu3LKjhDQyLGVqRRqFJUR).
+Status: implemented as the v0.1 prototype (2026-11-13). Sections note where the build refined the original design. Requirements: [`PRD.md`](PRD.md). Clickable UI mockup: [`mockups/index.html`](mockups/index.html) (also published at https://claude.ai/artifact/RXu3LKjhDQyLGVqRRqFJUR).
 
 Design decisions taken in this round:
 - Offline: cached reads + queued writes; PocketBase is the source of truth.
@@ -54,18 +54,18 @@ Every collection, child collections included, has its own required `user` relati
 **Terminology / future periodisation:** the code and schema use the sport-science terms throughout (`microcycle`, never "cycle" or "week"). `mesocycles` (name, start/end, goal, notes) and `macrocycles` are **only named in the design** as future parents. An optional `microcycles.mesocycle` relation will be added together with the `mesocycles` collection; no tables or UI are built in v1. The domain module puts periodisation types in `src/domain/periodisation.ts` so meso/macro can be added later without renaming.
 
 ## 3. Lifecycle
-- **Day start (implemented in M4):** the first time the app is open on a date, it creates what is missing, in this order:
-  1. The `microcycles` row for the microcycle that contains the date, with the body weight locked for it (HealthKit average from M6; until then the last weight used, else the fallback from Settings).
-  2. The `day_log` for the date, with `base_targets` from the active schedule's day plan. `targets` equals `base_targets` until redistribution exists (M6).
+- **Day start:** the first time the app is open on a date, it creates what is missing, in this order:
+  1. The `microcycles` row for the microcycle that contains the date, with the body weight locked for it (see body weight below).
+  2. The `day_log` for the date, with `base_targets` from the active schedule's day plan and `targets` corrected for earlier days (see balance and correction below).
   3. The day's `log_slots` and `log_entries`, snapshotted from the plan.
-- **Future days are not stored.** They are previews computed from the active schedule (and, from M6, the running balance). This replaces the earlier idea of creating every day log at microcycle start, which would have frozen the plan for the week on Monday.
+- **Future days are not stored.** They are previews computed from the active schedule and the running balance. This replaces the earlier idea of creating every day log at microcycle start, which would have frozen the plan for the week on Monday.
 - **Today follows the plan while a slot is untouched.** Until a day is closed, each time Today loads it is reconciled with the active schedule (`reconcileDayLog`):
   - a slot that is still pending with nothing logged by hand takes over plan changes (name, time, items), and is removed if the plan drops it;
   - a slot that was confirmed, adjusted, skipped or logged by hand never changes;
   - new plan slots are added; replacing a day's plan slots does not duplicate a meal that was already handled;
   - the day's targets follow a changed kcal target or a switched schedule.
-- **Body weight per microcycle (implemented in M6):** when a microcycle's first day is created, its weight is the previous microcycle's average from Apple Health; if that cannot be read (no weigh-ins, no access, or the phone is locked because the day is being created from a notification), the last weight used, then the fallback from Settings. A microcycle that started on a fallback takes the Health average the next time the app is open and can read it. Once the weight comes from Health it does not change for that microcycle.
-- **Balance and correction (implemented in M6; `week-model.ts`):** there is no separate "close" step and no stored balance. Everything is derived from the day logs each time, so going back to finish an earlier day updates the result.
+- **Body weight per microcycle:** when a microcycle's first day is created, its weight is the previous microcycle's average from Apple Health; if that cannot be read (no weigh-ins, no access, or the phone is locked because the day is being created from a notification), the last weight used, then the fallback from Settings. A microcycle that started on a fallback takes the Health average the next time the app is open and can read it. Once the weight comes from Health it does not change for that microcycle.
+- **Balance and correction (`week-model.ts`):** there is no separate "close" step and no stored balance. Everything is derived from the day logs each time, so going back to finish an earlier day updates the result.
   - An earlier day's intake is what was confirmed or logged by hand, plus planned meals that were never confirmed (assumed eaten as planned).
   - An earlier day counts toward the balance only when it is complete. A day with no log, or with an open slot left empty, is unknown, not zero: it is treated as on target and flagged on the Week screen.
   - Balance = Σ(intake − base target) over the counted earlier days of the microcycle.
@@ -102,7 +102,7 @@ Every collection, child collections included, has its own required `user` relati
 - **microcycleDayLabel(microcycle):** weekday names if length = 7 and the anchor is a Monday, otherwise "Day n".
 
 ## 5. Notifications
-Implemented in M5. Device checklist: [`NOTIFICATIONS.md`](NOTIFICATIONS.md).
+Device checklist: [`NOTIFICATIONS.md`](NOTIFICATIONS.md).
 
 - **Local only.** The app schedules notifications on the phone (`expo-notifications`); there is no push server. Times are the device's local wall-clock time.
 - **What is scheduled** (`buildReminders`, pure and unit-tested), for today and the next 6 days, at most 60 (iOS allows 64 pending):
@@ -131,24 +131,25 @@ Implemented in M5. Device checklist: [`NOTIFICATIONS.md`](NOTIFICATIONS.md).
   - balance so far (or final balance), the microcycle goal, what will not be recovered, and a notice for earlier days that are not counted
   - every day: plan → corrected target, macros, a bar of eaten and expected against the target, and its state (planned, eaten, incomplete, not logged, including unconfirmed meals)
   - the body weight used, where it came from, and the weights of the last microcycles
-- **Library:** Foods / Meals segments, search; food form; meal builder (add foods × qty with live totals). Deleting a food or meal archives it, so meals, plans and logs that use it keep working. Sorting by recent or frequent use comes with logging (M4).
+- **Library:** Foods / Meals segments, search; food form; meal builder (add foods × qty with live totals). Deleting a food or meal archives it, so meals, plans and logs that use it keep working. Lists are sorted by name; sorting by recent or frequent use is not built yet.
 - **Schedules:**
   - list with labels and an active badge
   - schedule editor: name, labels (pick or create), the microcycle goal (maintenance, deficit or surplus; spread evenly or set per day; per-day include toggle), a per-day preview of the resulting targets, and a notice when floors block part of a deficit. Activate, duplicate (copies every day, slot and item) and delete (not while active).
   - day editor: kcal target with derived macros; − / + steppers for each macro with "Reset"; the imbalance notice with "Rebalance carbs" and "Accept surplus/deficit" (saving is blocked until one is chosen); the day's slots with what the planned ones add up to and what is left for open slots; "Copy slots from another day" (replaces this day's slots).
   - slot editor: name, time, planned or open, reminder on/off, and for planned slots the meals (× servings) and foods (× quantity) with a live total.
-  - A new schedule starts with every day at one kcal value. Until microcycles exist (M6), macros use the fallback weight from Settings.
+  - A new schedule starts with every day at one kcal value. Macros use the latest microcycle's weight, or the fallback weight from Settings before any microcycle exists.
 - **Settings:** protein and fat targets and floors, carb floor, largest daily change %, fallback weight, reminder times, account and sign-out. An Apple Health card connects body-weight access. Microcycle length is not exposed in the UI.
 
-## 7. Build milestones
+## 7. Build history
+All milestones are built (v0.1 prototype):
 - **M0:** scaffold Expo app + PocketBase migrations + seed script
 - **M1:** domain core + tests
 - **M2:** Library
-- **M3:** Schedules editor
-- **M4:** Day logs, Today screen and slot sheet
+- **M3:** Schedules editor and Settings
+- **M4:** Day logs, Today screen and meal logging
 - **M5:** Notifications
-- **M6:** HealthKit, microcycles, day close, redistribution, Week screen
-- **M7:** Offline queue hardening
+- **M6:** Apple Health weight, balance and corrections, Week screen
+- **M7:** Offline use
 
 ## 8. Worked examples (reference values for tests)
 Body weight 82 kg, default settings (protein 2.0 g/kg, fat 0.8 g/kg, carb floor 4.0 g/kg, max daily change 15 %).
@@ -172,7 +173,7 @@ Body weight 82 kg, default settings (protein 2.0 g/kg, fat 0.8 g/kg, carb floor 
 These examples are covered by the tests in `app/src/domain/__tests__/`.
 
 ## 9. Offline behaviour
-Implemented in M7. PocketBase stays the source of truth.
+PocketBase stays the source of truth.
 
 - **Saved data.** The query cache is kept for a week and saved on the phone (AsyncStorage, `qc.query-cache`), including data whose last refresh failed. The app opens with what it last knew and refreshes in the background.
 - **Connection state** is inferred from the app's own requests (`connectivity.ts`): no response means offline, any response means online. While offline the server is pinged every 20 s. There is no network-state library, which would be another native module.

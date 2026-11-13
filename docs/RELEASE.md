@@ -1,4 +1,6 @@
-# First release and phone install
+# Releasing and installing
+
+> **The first backend release is done** (2026-11-09, from commit `abb7317`). Its record is in [`releases/2026-11-09-initial-backend.md`](releases/2026-11-09-initial-backend.md). The deployed migrations are unchanged since then. Sections 1–3 are kept for reference; later schema changes follow the platform's additive upgrade workflow in `backend/README.md`. Section 4 (installing on the iPhone) still applies.
 
 This covers two things:
 1. Deploying the app schema to the hosted `quick-calories` PocketBase project.
