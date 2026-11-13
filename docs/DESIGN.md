@@ -59,7 +59,7 @@ Every collection, child collections included, has its own required `user` relati
   2. The `day_log` for the date, with `base_targets` from the active schedule's day plan and `targets` corrected for earlier days (see balance and correction below).
   3. The day's `log_slots` and `log_entries`, snapshotted from the plan.
 - **Future days are not stored.** They are previews computed from the active schedule and the running balance. This replaces the earlier idea of creating every day log at microcycle start, which would have frozen the plan for the week on Monday.
-- **Today follows the plan while a slot is untouched.** Until a day is closed, each time Today loads it is reconciled with the active schedule (`reconcileDayLog`):
+- **Today follows the plan while a slot is untouched.** While the date is today, each time Today loads it is reconciled with the active schedule (`reconcileDayLog`):
   - a slot that is still pending with nothing logged by hand takes over plan changes (name, time, items), and is removed if the plan drops it;
   - a slot that was confirmed, adjusted, skipped or logged by hand never changes;
   - new plan slots are added; replacing a day's plan slots does not duplicate a meal that was already handled;
