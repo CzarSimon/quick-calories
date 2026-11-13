@@ -84,7 +84,7 @@ npm test
 **v0.1 prototype.** Every screen in the design is built: Today, Week, Library, Schedules and Settings, with meal reminders, Apple Health body weight, corrections across the week and offline logging.
 
 - **Backend:** the schema is deployed to production (record in [`docs/releases/`](docs/releases/)). From now on only additive schema changes pass the hosting platform's upgrade gate.
-- **Tests:** 133 unit tests for the calculations and data logic (`cd app && npm test`) and 151 backend access-rule checks (`npm run test:backend`).
+- **Tests** (run on every pull request by GitHub Actions, `.github/workflows/ci.yml`): 133 unit tests for the calculations and data logic (`cd app && npm test`) and 151 backend access-rule checks (`npm run test:backend`).
 - **Still to verify on an iPhone:** the device checklist in [`docs/NOTIFICATIONS.md`](docs/NOTIFICATIONS.md), which covers notifications, Apple Health and offline use.
 
 **Next**
