@@ -1,10 +1,21 @@
-# Quick Calories — two design directions
+# Quick Calories — Fieldnotes refinement
 
-Design exploration based on `claude/modest-brown-lo8k28` at `7b93aa6`, the supplied design-review ZIP, and the current implementation. These are proposals for discussion, not changes to the app or its data model.
+Design exploration based on `claude/modest-brown-lo8k28` at `7b93aa6`, the supplied design-review ZIP, and the current implementation. Fieldnotes and Quick Q were selected by the owner. This is the second design iteration, not a change to the Expo app or its data model.
 
 Open `index.html` in a browser. The prototype uses sample data only, with no backend connection. Both directions support Today, Library, meal entry, new food, Week and Schedules. Use the review controls to switch direction, appearance and screen.
 
-## Review
+## Selected direction — iteration 02
+
+- **Fieldnotes + Quick Q** are the chosen visual direction and identity. The earlier Split study remains available for reference.
+- **Ready to log comes first**, immediately below the date/header. All meal rows in **Your day** open that slot's log, including already logged meals for corrections. The list includes all five slots; the top card is a shortcut, not the only entry point.
+- **Available today** replaces “Left for dinner.” The subtitle **After your planned meals** makes the calculation explicit: target − eaten − still planned. It is shared by all unplanned food, not a separate allowance per open meal.
+- Calories and remaining carbs/protein/fat lead a single daily summary. Eaten and still-planned energy appear underneath in one progress bar; macro details and the corrected daily target are in a disclosure. Negative remaining values say **over**, rather than being silently clamped to zero.
+- **+ Log food** lets the sample demonstrate an extra snack. It reduces the shared calorie and macro allowance; it does not silently consume or replace a planned meal. Dinner remains accessible through its own row. The extra row is a design proposal for presenting ad-hoc intake, not a new approved backend concept.
+- **New food retains the existing app layout**: name → five-unit segmented selector (g/ml/piece/slice/serving) → reference amount → nutrition card with calories and a single three-column macro row → Add food. Only colour and surface styling change. The original kcal-from-macros hint and default-unit amount behaviour are reproduced.
+
+Updated previews: [Today + New food](previews/fieldnotes-refinement.png), [New food with the calorie hint](previews/fieldnotes-food-hint.png).
+
+## Original review
 
 1. **The frequent action is below the fold.** On Today the summary and dinner allowance precede the due meal. Put a single next-action area near the top, with confirm and adjust together. Confirmation updates eaten values immediately, offers undo, and leaves projection unchanged.
 2. **Repeated containers flatten the hierarchy.** Almost every row is a rounded card. Use a continuous list for food, meals and the daily timeline; reserve a bounded surface for the current action.
@@ -17,7 +28,7 @@ The top web tabs in the handover are a web-only rendering detail, not an iPhone 
 
 ## A — Fieldnotes
 
-Warm paper, deep evergreen, restrained serif display titles and system sans for actions and data. A compact dinner allowance sits above the due meal. The rest of the day reads like an orderly journal with time in the margin. Most rows have separators, not boxes.
+Warm paper, deep evergreen, restrained serif display titles and system sans for actions and data. The due meal leads, followed by a single allowance-and-progress section. The rest of the day reads like an orderly journal with time in the margin. Most rows have separators, not boxes.
 
 Best fit: calm repeated use, a personal food library, an app that feels deliberately made rather than like a fitness dashboard. Tradeoff: quieter numeric hierarchy than Split. Use the native system serif (New York) only for short display headings; use SF Pro and tabular numerals everywhere functional.
 
@@ -41,7 +52,7 @@ These are original geometric studies, not a trademark or App Store similarity cl
 
 - Sample date is Wednesday 11 November 2026, matching the handover, rather than the device's current date.
 - Today keeps eaten, projected and target separate. Source code distinguishes today's pending projection from historical weekly assumptions; the handover compresses these into a contradictory sentence. Preserve current domain behaviour.
-- Dinner allowance = target minus eaten and still-planned food. Confirmation moves food from planned to eaten without changing dinner allowance. The prototype demonstrates this with the snack.
+- Available today = target minus eaten and still-planned food, for calories and each macro. Confirming the planned amount moves food from planned to eaten without changing what is available. An adjusted portion or extra food changes the allowance.
 - Adjusting a portion recalculates the current meal before saving. Skip, bulk confirm, notification actions, historical navigation and sync are specified for the production flow but are not all simulated here.
 - The library and new-food flow demonstrate temporary in-memory creation. Reload resets sample data. A production implementation must use the existing library mutations and connection rules.
 - In production, offline confirms remain available and show queued status. Library / schedule editing requires connection. Failed saves retain entered data and offer retry.
@@ -49,9 +60,9 @@ These are original geometric studies, not a trademark or App Store similarity cl
 - Keep target correction detail under a disclosure. Preserve incomplete-day and unconfirmed-meal indicators in Week; never display a missing dinner as zero consumption.
 - Use >=44 pt controls, Dynamic Type, accessible labels, numeric keyboards, visible focus in the review prototype, and explicit status text. Actual VoiceOver, Dynamic Type and native glass appearance still require device validation.
 
-## Recommended first iteration
+## Implementation boundary
 
-Start with Fieldnotes' continuous lists and warm restraint, and choose whether its journal-like hierarchy or Split's action-first hierarchy feels faster. Pick the identity independently. Implement Today + logging + library first; then Week and focused schedule editing. No production app, backend or schedule data is changed by this review branch.
+The selected design is still a browser prototype. Apply it to Today, meal logging and the library only after the design iteration is settled; then update Week and focused schedule editing. Keep the existing PocketBase backend, domain calculations, notification behaviour and native navigation. New food should retain its existing component order and behaviours when the theme is applied.
 
 ## Visuals and validation
 
@@ -61,9 +72,9 @@ Start with Fieldnotes' continuous lists and warm restraint, and choose whether i
 - [Alternate appearances](previews/appearances.png)
 - [Three identities](previews/identity-studies.png)
 
-Browser verification: snack confirmation keeps projection/allowance stable; undo restores the sample; 1.2× snack recalculates eaten and remaining values; recipe quantities update totals; creating a food returns to the unsaved recipe with its name and quantities intact; saving adds the recipe to the library. All 24 combinations of six screens × two directions × two appearances rendered without content overflow. All six screens in both directions also passed horizontal-overflow checks at a 320 px review viewport. No JavaScript errors. Representative screenshots were inspected visually.
+Browser verification for iteration 02: Ready to log precedes the combined summary; confirmation/undo preserve the unplanned allowance; portion adjustment changes it; all five slot rows open the correct logger; logged lunch is not double-counted; extra banana and dinner update calories and macros independently. The food form preserves all five units, custom reference amounts, the 4/4/9 kcal hint and inline creation without losing an unsaved recipe. All 24 screen/theme combinations were captured without horizontal content overflow. Today and New food also passed page/content overflow checks at 320 and 390 px in both appearances. No JavaScript errors. Representative light/dark previews were visually inspected.
 
-Limits: this is a sample-data browser study, not a native accessibility or production integration test. Dinner selection is a visual preview; lunch saving, existing-item editing and schedule mutations are not implemented in the study. Only the snack confirmation and library creation flows are interactive end to end. No backend tests are needed because no backend or app code changed.
+Limits: sample data in memory only; reload resets it. Existing-library-item editing, multi-item open-meal composition, schedule mutations, notification actions and offline sync are not implemented here. The sample extra-food flow models one extra entry, which can be edited. Native accessibility, Dynamic Type, keyboard behaviour and full production integration still need device validation. No Expo or backend code changed.
 
 ### Starting tokens
 
