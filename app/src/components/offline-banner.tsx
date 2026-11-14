@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useOnline } from '@/lib/connectivity';
 import { useOutbox, useRejectedCount } from '@/lib/outbox';
@@ -28,7 +29,7 @@ export function OfflineBanner() {
   if (lines.length === 0) return null;
 
   return (
-    <View style={[styles.banner, { backgroundColor: online && rejected === 0 ? colors.backgroundSelected : colors.carbSoft }]} testID="offline-banner">
+    <View style={[styles.banner, { backgroundColor: online && rejected === 0 ? colors.backgroundSelected : colors.warningSoft }]} testID="offline-banner">
       {lines.map((line) => (
         <ThemedText key={line} type="small">
           {line}
@@ -39,5 +40,5 @@ export function OfflineBanner() {
 }
 
 const styles = StyleSheet.create({
-  banner: { borderRadius: 12, padding: 12, gap: 4 },
+  banner: { borderRadius: Radius.medium, padding: 12, gap: 4 },
 });

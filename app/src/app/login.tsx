@@ -76,7 +76,7 @@ export default function LoginScreen() {
             accessibilityRole="button"
             disabled={busy || !email || !password}
             onPress={submit}
-            style={[styles.button, { backgroundColor: colors.carb, opacity: busy || !email || !password ? 0.5 : 1 }]}>
+            style={[styles.button, { backgroundColor: colors.accent, opacity: busy || !email || !password ? 0.5 : 1 }]}>
             {busy ? (
               <ActivityIndicator color={colors.onAccent} />
             ) : (

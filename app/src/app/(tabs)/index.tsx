@@ -54,7 +54,7 @@ export default function TodayScreen() {
             </View>
             <Link href="/settings" asChild>
               <Pressable accessibilityRole="button" hitSlop={8}>
-                <ThemedText type="smallBold" themeColor="carb">
+                <ThemedText type="smallBold" themeColor="accent">
                   Settings
                 </ThemedText>
               </Pressable>

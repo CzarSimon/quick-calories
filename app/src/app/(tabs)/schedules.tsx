@@ -87,7 +87,7 @@ function ScheduleRow({ schedule }: { schedule: Schedule }) {
         ) : null}
       </View>
       {schedule.is_active ? (
-        <View style={[styles.badge, { backgroundColor: colors.carb }]}>
+        <View style={[styles.badge, { backgroundColor: colors.accent }]}>
           <ThemedText type="smallBold" themeColor="onAccent">
             Active
           </ThemedText>

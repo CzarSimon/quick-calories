@@ -136,7 +136,7 @@ function DaysCard({ summary }: { summary: WeekSummary }) {
       {summary.days.map((day, i) => (
         <View key={day.date} style={[styles.day, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line }]} testID={`week-day-${i}`}>
           <View style={styles.dayHead}>
-            <ThemedText type="smallBold" themeColor={day.when === 'today' ? 'carb' : 'text'} style={styles.dayName}>
+            <ThemedText type="smallBold" themeColor={day.when === 'today' ? 'accent' : 'text'} style={styles.dayName}>
               {day.label}
             </ThemedText>
             <ThemedText type="small" style={[styles.grow, styles.tabular]}>
