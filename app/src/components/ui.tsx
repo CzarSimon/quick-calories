@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   // The focus border shows focus; the web build's own outline would draw a second box inside it.
-  input: { flex: 1, minWidth: 0, paddingVertical: 12, fontSize: 16, outlineWidth: 0 },
+  input: { flex: 1, minWidth: 0, paddingVertical: 12, fontSize: 16, outlineStyle: 'none' },
   segmented: { flexDirection: 'row', borderWidth: 1, borderRadius: Radius.medium, padding: 3, gap: 2 },
   segment: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 40, borderRadius: 9 },
   underlineBar: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth },

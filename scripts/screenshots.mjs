@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // Screenshots of the app's screens from the web build, with realistic sample data.
 //
-// Usage: node scripts/screenshots.mjs [--out=DIR] [--only=name,name] [--skip-build] [--scale=1|2]
+// Usage: node scripts/screenshots.mjs [--out=DIR] [--only=name,name] [--skip-build] [--scale=1|2] [--check]
+//
+// --check drives the main logging flows instead (undo, unplanned food offline, remove, quick entry
+// saved to the library) and checks the results on screen and on the server. No screenshots.
 //
 // Starts a throwaway local PocketBase (./pocketbase, from scripts/ensure-pocketbase.sh) with this
 // repo's migrations, seeds the "Q4 training" schedule plus a small library, builds the web app
@@ -211,7 +214,8 @@ async function logEarlierDays(page, base) {
   }
 }
 
-// Each scene leaves the app where it found it, or says so.
+// Each scene leaves the app where it found it, or is marked `changes`.
+const DARK = new Set(["today", "week", "log-open-dinner", "library-meals", "log-food-new", "today-day-details"]);
 const WED = (time = "12:10") => at("11", time);
 const SCENES = [
   {
@@ -265,7 +269,245 @@ const SCENES = [
     },
   },
   { name: "settings", full: true, run: async (page, base) => goto(page, base, "/settings", WED()) },
+  // The scenes below change data on the server, so they come last.
+  {
+    name: "log-food-new",
+    run: async (page, base) => {
+      await goto(page, base, "/", WED());
+      await byTestId(page, "log-food").click();
+      await settle(page);
+    },
+  },
+  {
+    name: "quick-entry",
+    changes: true,
+    run: async (page, base) => {
+      await goto(page, base, "/", WED());
+      await byTestId(page, "log-food").click();
+      await settle(page);
+      await byTestId(page, "log-add-item").click();
+      await settle(page);
+      await byTestId(page, "picker-quick-entry").click();
+      await sleep(300);
+      await byTestId(page, "quick-name").fill("Cinnamon bun, café");
+      await byTestId(page, "quick-kcal").fill("390");
+      await byTestId(page, "quick-carbs").fill("48");
+      await byTestId(page, "quick-protein").fill("6");
+      await byTestId(page, "quick-fat").fill("16");
+      await sleep(200);
+    },
+  },
+  {
+    name: "today-unplanned",
+    full: true,
+    changes: true,
+    run: async (page, base) => {
+      await goto(page, base, "/", WED());
+      await byTestId(page, "log-food").click();
+      await settle(page);
+      await byTestId(page, "log-add-item").click();
+      await settle(page);
+      await byTestId(page, "picker-quick-entry").click();
+      await sleep(300);
+      await byTestId(page, "quick-name").fill("Cinnamon bun, café");
+      await byTestId(page, "quick-kcal").fill("390");
+      await byTestId(page, "quick-carbs").fill("48");
+      await byTestId(page, "quick-protein").fill("6");
+      await byTestId(page, "quick-fat").fill("16");
+      await byTestId(page, "quick-add").click();
+      await sleep(300);
+      await byTestId(page, "log-name").fill("Fika");
+      await byTestId(page, "log-time").fill("10:42");
+      await byTestId(page, "log-save").click();
+      await settle(page);
+    },
+  },
+  {
+    name: "log-unplanned",
+    run: async (page, base) => {
+      await goto(page, base, "/", WED());
+      await byTestId(page, "slot-Fika").click();
+      await settle(page);
+    },
+  },
+  {
+    name: "today-over",
+    full: true,
+    changes: true,
+    run: async (page, base) => {
+      await goto(page, base, "/", WED("19:30"));
+      await byTestId(page, "slot-Dinner").click();
+      await settle(page);
+      await byTestId(page, "log-add-item").click();
+      await settle(page);
+      await byTestId(page, "picker-quick-entry").click();
+      await sleep(300);
+      await byTestId(page, "quick-name").fill("Pizza night");
+      await byTestId(page, "quick-kcal").fill("2600");
+      await byTestId(page, "quick-add").click();
+      await sleep(300);
+      await byTestId(page, "log-save").click();
+      await settle(page);
+      await byTestId(page, "day-details").click();
+      await sleep(200);
+    },
+  },
 ];
+
+// ---------- flow checks (--check) ----------
+function assert(cond, message) {
+  if (!cond) throw new Error(message);
+}
+
+async function userClient() {
+  const pb = new PocketBase(PB_URL);
+  pb.autoCancellation(false);
+  await pb.collection("users").authWithPassword(USER.email, USER.password);
+  return pb;
+}
+
+const rowText = async (page, name) => (await byTestId(page, `slot-${name}`).count()) ? byTestId(page, `slot-${name}`).innerText() : null;
+
+async function logQuick(page, { name, kcal, slotName, time }) {
+  await byTestId(page, "log-add-item").click();
+  await settle(page);
+  await byTestId(page, "picker-quick-entry").click();
+  await sleep(300);
+  await byTestId(page, "quick-name").fill(name);
+  await byTestId(page, "quick-kcal").fill(String(kcal));
+  await byTestId(page, "quick-add").click();
+  await sleep(300);
+  if (slotName) await byTestId(page, "log-name").fill(slotName);
+  if (time) await byTestId(page, "log-time").fill(time);
+  await byTestId(page, "log-save").click();
+  await settle(page);
+}
+
+const CHECKS = [
+  [
+    "confirming from the card and undoing it",
+    async (page, base) => {
+      await goto(page, base, "/", WED());
+      await byTestId(page, "confirm-next").click();
+      await settle(page);
+      assert((await rowText(page, "Pre-lunch snack")).includes("Confirmed"), "snack not confirmed");
+      await byTestId(page, "toast-action").click();
+      await settle(page);
+      assert((await rowText(page, "Pre-lunch snack")).includes("Unconfirmed"), "undo did not reopen the snack");
+    },
+  ],
+  [
+    "logging unplanned food and undoing it",
+    async (page, base) => {
+      await goto(page, base, "/", WED());
+      await byTestId(page, "log-food").click();
+      await settle(page);
+      await logQuick(page, { name: "Espresso", kcal: 5, slotName: "Coffee", time: "11:00" });
+      assert(await rowText(page, "Coffee"), "unplanned row missing");
+      await byTestId(page, "toast-action").click();
+      await settle(page);
+      assert(!(await rowText(page, "Coffee")), "undo did not remove the row");
+      const pb = await userClient();
+      assert((await pb.collection("log_slots").getFullList({ filter: 'name = "Coffee"' })).length === 0, "slot left on the server");
+    },
+  ],
+  [
+    "logging unplanned food offline, then syncing once",
+    async (page, base, context) => {
+      await goto(page, base, "/", WED());
+      // The web build loads each screen's code on first use (the phone has it all), so open the
+      // log screen once while online.
+      await byTestId(page, "log-food").click();
+      await settle(page);
+      await page.goBack();
+      await settle(page);
+      await context.setOffline(true);
+      await byTestId(page, "log-food").click();
+      await settle(page);
+      await logQuick(page, { name: "Cinnamon bun", kcal: 390, slotName: "Fika", time: "10:42" });
+      assert(await rowText(page, "Fika"), "unplanned row missing while offline");
+      await context.setOffline(false);
+      await page.reload();
+      await settle(page);
+      await sleep(1500);
+      await settle(page);
+      assert(await rowText(page, "Fika"), "unplanned row missing after reconnecting");
+      const pb = await userClient();
+      const slots = await pb.collection("log_slots").getFullList({ filter: 'name = "Fika"' });
+      assert(slots.length === 1, `expected one Fika on the server, found ${slots.length}`);
+      const entries = await pb.collection("log_entries").getFullList({ filter: pb.filter("log_slot = {:id}", { id: slots[0].id }) });
+      assert(entries.length === 1 && entries[0].kcal === 390 && entries[0].food === "", "entry not stored as typed");
+    },
+  ],
+  [
+    "editing and removing an unplanned slot",
+    async (page, base) => {
+      await goto(page, base, "/", WED());
+      await byTestId(page, "slot-Fika").click();
+      await settle(page);
+      await byTestId(page, "log-time").fill("15:05");
+      await byTestId(page, "log-save").click();
+      await settle(page);
+      assert((await rowText(page, "Fika")).includes("15:05"), "new time not shown");
+      await byTestId(page, "slot-Fika").click();
+      await settle(page);
+      await byTestId(page, "log-remove").click();
+      await byTestId(page, "log-remove-confirm").click();
+      await settle(page);
+      assert(!(await rowText(page, "Fika")), "row still shown after removing");
+      const pb = await userClient();
+      assert((await pb.collection("log_slots").getFullList({ filter: 'name = "Fika"' })).length === 0, "slot left on the server");
+    },
+  ],
+  [
+    "quick entry saved to the library",
+    async (page, base) => {
+      await goto(page, base, "/", WED("19:30"));
+      await byTestId(page, "slot-Dinner").click();
+      await settle(page);
+      await byTestId(page, "log-add-item").click();
+      await settle(page);
+      await byTestId(page, "picker-quick-entry").click();
+      await sleep(300);
+      await byTestId(page, "quick-name").fill("Carbonara, Trattoria");
+      await byTestId(page, "quick-carbs").fill("90");
+      await byTestId(page, "quick-protein").fill("35");
+      await byTestId(page, "quick-fat").fill("38");
+      await byTestId(page, "quick-save-library").click();
+      await byTestId(page, "quick-add").click();
+      await settle(page);
+      await byTestId(page, "log-save").click();
+      await settle(page);
+      assert((await rowText(page, "Dinner")).includes("Carbonara"), "dinner not logged");
+      const pb = await userClient();
+      const foods = await pb.collection("foods").getFullList({ filter: 'name = "Carbonara, Trattoria"' });
+      assert(foods.length === 1 && foods[0].unit === "serving" && foods[0].kcal === 842, "library food not saved as one serving of 842 kcal");
+      const entries = await pb.collection("log_entries").getFullList({ filter: 'name = "Carbonara, Trattoria"' });
+      assert(entries.length === 1 && entries[0].food === foods[0].id, "entry does not point at the new food");
+    },
+  ],
+];
+
+async function runChecks(browser, base, state) {
+  let failed = 0;
+  for (const [name, run] of CHECKS) {
+    const context = await browser.newContext({ viewport: { width: 390, height: 1400 }, storageState: state });
+    const page = await context.newPage();
+    const errors = [];
+    page.on("pageerror", (err) => errors.push(String(err)));
+    try {
+      await run(page, base, context);
+      if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
+      console.log(`ok    ${name}`);
+    } catch (err) {
+      failed++;
+      console.log(`FAIL  ${name}: ${err.message}`);
+      await page.screenshot({ path: join(OUT, `failed-${name.replace(/\W+/g, "-")}.png`) }).catch(() => undefined);
+    }
+    await context.close();
+  }
+  if (failed) process.exitCode = 1;
+}
 
 async function main() {
   if (!existsSync(BIN)) execFileSync(join(ROOT, "scripts", "ensure-pocketbase.sh"), { stdio: "inherit" });
@@ -293,10 +535,17 @@ async function main() {
     const state = await setup.storageState();
     await setup.close();
 
-    for (const scheme of ["light", "dark"]) {
-      for (const scene of SCENES) {
-        if (ONLY && !ONLY.has(scene.name)) continue;
-        if (scheme === "dark" && !["today", "week", "log-open-dinner", "library-meals"].includes(scene.name)) continue;
+    if (args.check) {
+      await runChecks(browser, base, state);
+      return;
+    }
+
+    // Both appearances of a scene are taken before the next scene runs, because some scenes
+    // change data that later screens show.
+    for (const scene of SCENES) {
+      if (ONLY && !ONLY.has(scene.name)) continue;
+      for (const scheme of ["light", "dark"]) {
+        if (scheme === "dark" && (scene.changes || !DARK.has(scene.name))) continue;
         const context = await browser.newContext({
           viewport: { width: 390, height: scene.full ? 2000 : 844 },
           deviceScaleFactor: SCALE,
