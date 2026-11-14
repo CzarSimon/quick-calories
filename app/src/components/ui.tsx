@@ -1,12 +1,14 @@
 import { useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
   View,
   type StyleProp,
   type TextInputProps,
+  type TextStyle,
   type ViewStyle,
 } from 'react-native';
 
@@ -414,6 +416,10 @@ export function ConfirmButton({
   );
 }
 
+// The focus border shows focus; the web build's own outline would draw a second box inside it.
+// React Native's types don't know the web-only value, hence the cast.
+const WEB_NO_OUTLINE = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : {};
+
 const styles = StyleSheet.create({
   card: { borderRadius: Radius.large, padding: Spacing.three, gap: Spacing.two },
   button: {
@@ -435,8 +441,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     gap: Spacing.two,
   },
-  // The focus border shows focus; the web build's own outline would draw a second box inside it.
-  input: { flex: 1, minWidth: 0, paddingVertical: 12, fontSize: 16, outlineStyle: 'none' },
+  input: { flex: 1, minWidth: 0, paddingVertical: 12, fontSize: 16, ...WEB_NO_OUTLINE },
   segmented: { flexDirection: 'row', borderWidth: 1, borderRadius: Radius.medium, padding: 3, gap: 2 },
   segment: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 40, borderRadius: 9 },
   underlineBar: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth },
