@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { QuickEntryForm } from '@/components/quick-entry';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Button, ListRow, Segmented } from '@/components/ui';
+import { Button, ListRow, Segmented, WEB_NO_OUTLINE } from '@/components/ui';
 import { Radius, ScreenMargin, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { EntryDraft } from '@/lib/daylog-model';
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   head: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: ScreenMargin, paddingVertical: Spacing.two },
   controls: { paddingHorizontal: ScreenMargin, gap: Spacing.two },
-  search: { borderWidth: 1, borderRadius: Radius.medium, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
+  search: { borderWidth: 1, borderRadius: Radius.medium, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, ...WEB_NO_OUTLINE },
   list: { paddingHorizontal: ScreenMargin, paddingBottom: Spacing.six },
   quick: { paddingHorizontal: ScreenMargin, paddingBottom: Spacing.six },
   footer: { gap: Spacing.two, marginTop: Spacing.three },

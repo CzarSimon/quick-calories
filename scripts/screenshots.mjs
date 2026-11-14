@@ -198,7 +198,8 @@ async function logFromPicker(page, slotName, itemName) {
   await settle(page);
   await byTestId(page, "log-add-item").click();
   await settle(page);
-  await page.getByText(itemName, { exact: true }).first().click();
+  // Other tabs stay mounted on web, so only consider what is on screen.
+  await page.getByText(itemName, { exact: true }).locator("visible=true").first().click();
   await settle(page);
   await byTestId(page, "log-save").click();
   await settle(page);
@@ -257,6 +258,23 @@ const SCENES = [
       await sleep(200);
     },
   },
+  {
+    name: "library-no-match",
+    run: async (page, base) => {
+      await goto(page, base, "/library", WED());
+      await page.getByPlaceholder("Search meals").fill("Pancakes");
+      await sleep(200);
+    },
+  },
+  {
+    name: "meal-edit",
+    full: true,
+    run: async (page, base) => {
+      await goto(page, base, "/library", WED());
+      await page.getByText("Lunch box", { exact: true }).locator("visible=true").first().click();
+      await settle(page);
+    },
+  },
   { name: "food-new", run: async (page, base) => goto(page, base, "/food/new", WED()) },
   { name: "schedules", run: async (page, base) => goto(page, base, "/schedules", WED()) },
   {
@@ -264,7 +282,7 @@ const SCENES = [
     full: true,
     run: async (page, base) => {
       await goto(page, base, "/schedules", WED());
-      await page.getByText("Q4 training").first().click();
+      await page.getByText("Q4 training").locator("visible=true").first().click();
       await settle(page);
     },
   },

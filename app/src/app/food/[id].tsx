@@ -20,7 +20,8 @@ const UNITS: { value: FoodUnit; label: string }[] = [
 ];
 
 export default function FoodScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // `name` pre-fills a new food, e.g. from a library search that found nothing.
+  const { id, name } = useLocalSearchParams<{ id: string; name?: string }>();
   const isNew = id === 'new';
   const library = useLibrary();
   const food = isNew ? undefined : library.foodById.get(id);
@@ -30,17 +31,17 @@ export default function FoodScreen() {
     <>
       <Stack.Screen options={{ title: isNew ? 'New food' : 'Edit food' }} />
       <FormScreen state={state} missingText="This food no longer exists.">
-        <FoodForm key={food?.id ?? 'new'} food={food} />
+        <FoodForm key={food?.id ?? 'new'} food={food} initialName={name} />
       </FormScreen>
     </>
   );
 }
 
-function FoodForm({ food }: { food?: FoodRecord }) {
+function FoodForm({ food, initialName }: { food?: FoodRecord; initialName?: string }) {
   const save = useSaveFood();
   const archive = useArchiveFood();
 
-  const [name, setName] = useState(food?.name ?? '');
+  const [name, setName] = useState(food?.name ?? initialName ?? '');
   const [unit, setUnit] = useState<FoodUnit>(food?.unit ?? 'g');
   const [refAmount, setRefAmount] = useState(formatNumber(food?.ref_amount ?? 100));
   const [kcal, setKcal] = useState(food ? formatNumber(food.kcal) : '');

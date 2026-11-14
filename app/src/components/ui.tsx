@@ -418,7 +418,7 @@ export function ConfirmButton({
 
 // The focus border shows focus; the web build's own outline would draw a second box inside it.
 // React Native's types don't know the web-only value, hence the cast.
-const WEB_NO_OUTLINE = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : {};
+export const WEB_NO_OUTLINE = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : {};
 
 const styles = StyleSheet.create({
   card: { borderRadius: Radius.large, padding: Spacing.three, gap: Spacing.two },

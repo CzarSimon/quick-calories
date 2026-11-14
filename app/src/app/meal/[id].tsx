@@ -1,11 +1,13 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import { FormScreen } from '@/components/form-screen';
 import { LibraryPicker } from '@/components/library-picker';
 import { QuantityRow } from '@/components/quantity-row';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Card, ConfirmButton, Field, NutritionSummary } from '@/components/ui';
+import { Button, ConfirmButton, Field, NutritionSummary, SectionHeader } from '@/components/ui';
+import { Spacing } from '@/constants/theme';
 import { foodNutrition, mealNutrition, roundNutrition } from '@/domain';
 import { formatNumber, parseNumber, quantityStep } from '@/lib/format';
 import { errorMessage, useArchiveMeal, useLibrary, useSaveMeal, type Meal } from '@/lib/library';
@@ -78,8 +80,8 @@ function MealForm({ meal, foods, foodById }: { meal?: Meal; foods: FoodRecord[];
 
       <NutritionSummary title="Meal total" nutrition={total} />
 
-      <Card>
-        <ThemedText type="eyebrow">Foods</ThemedText>
+      <View>
+        <SectionHeader title="Foods" right={resolved.length ? `${resolved.length} ${resolved.length === 1 ? 'food' : 'foods'}` : undefined} />
         {resolved.length === 0 ? (
           <ThemedText type="small" themeColor={showErrors ? 'over' : 'textSecondary'}>
             {showErrors ? itemsError : 'Nothing added yet.'}
@@ -98,8 +100,8 @@ function MealForm({ meal, foods, foodById }: { meal?: Meal; foods: FoodRecord[];
             onRemove={() => setItems((current) => current.filter((i) => i.key !== item.key))}
           />
         ))}
-        <Button label="Add food" onPress={() => setPicking(true)} testID="meal-add-food" />
-      </Card>
+        <Button label="Add food" onPress={() => setPicking(true)} testID="meal-add-food" style={styles.add} />
+      </View>
 
       <Field label="Notes (optional)" value={notes} onChangeText={setNotes} placeholder="How you make it, when you eat it" multiline />
 
@@ -144,3 +146,7 @@ function MealForm({ meal, foods, foodById }: { meal?: Meal; foods: FoodRecord[];
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  add: { marginTop: Spacing.three },
+});
