@@ -1,5 +1,7 @@
 # Quick Calories — Fieldnotes refinement
 
+> **Status:** selected, and being implemented in the Expo app. The implementation plan, including where it deliberately differs from this prototype, is [`docs/plans/fieldnotes-and-unplanned.md`](../plans/fieldnotes-and-unplanned.md). The Split direction and the other two identity studies were removed from this folder once Fieldnotes and Quick Q were chosen; they remain in git history.
+
 Design exploration based on `claude/modest-brown-lo8k28` at `7b93aa6`, the supplied design-review ZIP, and the current implementation. Fieldnotes and Quick Q were selected by the owner. This is the third design iteration, not a change to the Expo app or its data model.
 
 Open `index.html` in a browser. The prototype uses sample data only, with no backend connection. Both directions support Today, Library, meal entry, new food, Week and Schedules. Use the review controls to switch direction, appearance and screen.
