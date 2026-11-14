@@ -233,7 +233,7 @@ function MacroRow({ label, color, grams, perKg, source, custom, belowFloor, step
           {source}
           {custom ? ' · ' : ''}
           {custom ? (
-            <ThemedText type="smallBold" themeColor="carb" onPress={onReset} accessibilityRole="button" accessibilityLabel={`Reset ${label}`}>
+            <ThemedText type="smallBold" themeColor="accent" onPress={onReset} accessibilityRole="button" accessibilityLabel={`Reset ${label}`}>
               Reset
             </ThemedText>
           ) : null}

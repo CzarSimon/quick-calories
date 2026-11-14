@@ -49,7 +49,9 @@ Every collection, child collections included, has its own required `user` relati
   - targets: `base_targets` json (plan + adjustment, kcal/p/f/c) and `targets` json (after redistribution)
   - state: closed
 - `log_slots`: day_log, plan_slot, name, time, kind, status (`pending`/`confirmed`/`adjusted`/`skipped`).
+  - A slot **without `plan_slot` is unplanned**: something eaten outside the planned meals, logged from Today with "+ Log food". It is always `kind: open`, `status: confirmed`, and sorts from 1000 so it follows a planned slot at the same minute. Its id is chosen on the phone (15 characters of `[a-z0-9]`) so it can be created offline. A planned slot whose plan slot was deleted after it was eaten also loses its `plan_slot` and shows as unplanned, which is accurate.
 - `log_entries`: log_slot, food or meal ref, name, quantity, kcal/c/p/f **snapshot**, origin (`planned`/`adhoc`), source (`manual`/`ai`).
+  - An entry may have **neither food nor meal**: a dish typed in by its macros ("Enter macros directly"), one portion = quantity 1. Saving it to the library is optional and creates a food with unit `serving` and reference amount 1, which the entry then points at.
 
 **Terminology / future periodisation:** the code and schema use the sport-science terms throughout (`microcycle`, never "cycle" or "week"). `mesocycles` (name, start/end, goal, notes) and `macrocycles` are **only named in the design** as future parents. An optional `microcycles.mesocycle` relation will be added together with the `mesocycles` collection; no tables or UI are built in v1. The domain module puts periodisation types in `src/domain/periodisation.ts` so meso/macro can be added later without renaming.
 
@@ -116,22 +118,21 @@ Device checklist: [`NOTIFICATIONS.md`](NOTIFICATIONS.md).
 - **Permission** is asked the first time there is something to remind about. Settings shows the state and links to iOS Settings when it was declined. Signing out cancels every scheduled reminder.
 
 ## 6. Screens (tabs: Today · Week · Library · Schedules; Settings from the header)
-- **Today:**
-  - kcal eaten against the target, with a bar showing eaten, still planned, and the target
-  - C / P / F bars with the same three parts
-  - a "Left for dinner" card for the first open slot with nothing logged: remaining kcal and macros, and a button to log it
-  - "Confirm N earlier meals as planned" when two or more due slots are unconfirmed
-  - the day's slots with status (Planned, Unconfirmed, Confirmed, Adjusted, Skipped, Open, Logged) and an "Ate as planned" button on each pending planned slot
-  - "Previous day" to review or finish an earlier day
-  - when today's target was corrected: "Plan 3,950, −20 to make up for earlier days"
-  - what today does to tomorrow: "As things stand, Wed moves from 3,600 to 3,580 kcal"
-- **Log slot:** the slot's items with typed or stepped quantities, remove, add a meal or food from the library; what the meal leaves for the rest of the day; "Ate as planned" / "Save what I ate", "Skip this slot", and "Mark as not eaten yet". Changing a quantity scales the stored nutrition snapshot.
+- **Today** (`app/src/app/(tabs)/index.tsx`, parts in `app/src/components/today/`), top to bottom:
+  - the date and the schedule the day comes from; arrows to step to earlier days and back
+  - **the next-meal card** (`nextUp` in `daylog-model.ts`): one due meal with "Ate as planned" and "Adjust"; "Confirm both / all N as planned" when several are due; the next meal with a quieter button before it is due; or "All planned meals logged", offering to log an open slot that is still empty. Presses are ignored for 600 ms after the card changes to another meal, so a double tap can't confirm two. A confirm shows a toast with Undo (sets the slots back to pending).
+  - **Available today**: target − eaten − still planned, for kcal and each macro ("306 g left", or "77 g over" in words, not red), a bar of eaten and still planned against the target, and "+ Log food". "Day details" (closed by default) holds the three macro bars, the target correction ("Plan 3,600 kcal, +200 kcal from earlier days") and the projected total.
+  - **Your day**: every slot in time order as one row with its contents, kcal and a state word (`slotState`: Planned, Unconfirmed, Confirmed, Adjusted, Skipped, Log meal, Logged, Unplanned). The whole row opens the slot.
+  - what today does to tomorrow: "Thu moves from 3,800 to 4,010 kcal as things stand."
+- **Log slot** (`app/src/app/log-slot/[id].tsx`): the total with its macros, what the meal leaves for the day, the items with typed or stepped quantities and Remove, and "Add a meal or food". Primary action "Ate as planned" / "Save what I ate" / "Save" / "Save as empty"; "Skip this slot" and "Mark as not eaten yet" as text buttons. Changing a quantity scales the stored nutrition snapshot.
+  - With id `new`, it logs an unplanned slot: a name (default "Snack") and a time (default now, 12:00 on an earlier day) above the items, and "Log it". Today then shows a toast with Undo, which removes the slot. Opening an unplanned slot allows changing its name, time and items, or removing it; saving it with no items removes it, so an empty open slot never leaves the day's intake unknown.
+  - The picker (`library-picker.tsx`) offers "Enter macros directly" (`quick-entry.tsx`, built on `quickEntryDraft`): name, calories and macros for one portion, with calories worked out from 4/4/9 when left empty, and an optional "Also save to my library", disabled offline. It is only offered when logging; plan items and meal ingredients must point at the library.
 - **Week:**
   - the microcycle's dates, with "Earlier" / "Later" to look back
   - balance so far (or final balance), the microcycle goal, what will not be recovered, and a notice for earlier days that are not counted
   - every day: plan → corrected target, macros, a bar of eaten and expected against the target, and its state (planned, eaten, incomplete, not logged, including unconfirmed meals)
   - the body weight used, where it came from, and the weights of the last microcycles
-- **Library:** Foods / Meals segments, search; food form; meal builder (add foods × qty with live totals). Deleting a food or meal archives it, so meals, plans and logs that use it keep working. Lists are sorted by name; sorting by recent or frequent use is not built yet.
+- **Library:** opens on Meals; search, Meals / Foods tabs, a count with "+ Meal" / "+ Food", and flat rows that open the item. A search with no match offers to create a food with that name. Food form; meal builder (add foods × qty with live totals). Deleting a food or meal archives it, so meals, plans and logs that use it keep working. Lists are sorted by name; sorting by recent or frequent use is not built yet.
 - **Schedules:**
   - list with labels and an active badge
   - schedule editor: name, labels (pick or create), the microcycle goal (maintenance, deficit or surplus; spread evenly or set per day; per-day include toggle), a per-day preview of the resulting targets, and a notice when floors block part of a deficit. Activate, duplicate (copies every day, slot and item) and delete (not while active).
@@ -150,6 +151,7 @@ All milestones are built (v0.1 prototype):
 - **M5:** Notifications
 - **M6:** Apple Health weight, balance and corrections, Week screen
 - **M7:** Offline use
+- **Fieldnotes design and unplanned food** (plan: [`plans/fieldnotes-and-unplanned.md`](plans/fieldnotes-and-unplanned.md)): new visual system, Today rebuilt around the next meal and what is still available, unplanned slots and quick entry by macros, restyled log screen, picker and Library. Week and the schedule editors have the new style; their layouts are due a separate design round.
 
 ## 8. Worked examples (reference values for tests)
 Body weight 82 kg, default settings (protein 2.0 g/kg, fat 0.8 g/kg, carb floor 4.0 g/kg, max daily change 15 %).
@@ -177,10 +179,10 @@ PocketBase stays the source of truth.
 
 - **Saved data.** The query cache is kept for a week and saved on the phone (AsyncStorage, `qc.query-cache`), including data whose last refresh failed. The app opens with what it last knew and refreshes in the background.
 - **Connection state** is inferred from the app's own requests (`connectivity.ts`): no response means offline, any response means online. While offline the server is pinged every 20 s. There is no network-state library, which would be another native module.
-- **Outbox** (`outbox.ts`, `outbox-model.ts`). Confirming, skipping, reopening and "save what I ate" never call the server directly:
-  1. the change is added to a list stored on the phone (`qc.outbox`), merged with an earlier change to the same slot;
-  2. screens lay the list over the loaded data (`applyOps`), so the change shows at once, survives a restart, and feeds Today's totals, the Week balance and the reminders;
-  3. the list is sent in order: now, on app start, on return to the foreground, and when the server is reachable again. Sending stops at the first change that gets no response, so order is kept.
+- **Outbox** (`outbox.ts`, `outbox-model.ts`). Confirming, skipping, reopening, "save what I ate", and creating, editing or removing an unplanned slot never call the server directly:
+  1. the change is added to a list stored on the phone (`qc.outbox`), merged with an earlier change to the same slot. An operation can carry a new status, the slot's entries, `create` (the slot is new; its id was chosen on the phone), `fields` (new name or time) and `remove`. Removing a slot whose creation has not been sent drops both;
+  2. screens lay the list over the loaded data (`applyOps`), so the change shows at once, survives a restart, and feeds Today's totals, the Week balance and the reminders. A created slot is only added to its own day (matched by day log id) and the day is re-sorted by time;
+  3. the list is sent in order: now, on app start, on return to the foreground, and when the server is reachable again. Sending stops at the first change that gets no response, so order is kept. A creation first looks the slot up by id and creates it only when it is missing, so a retry after a lost response is safe and a real validation error is still reported.
 - **Refusals.** A change the server refuses (the slot no longer exists, the session ended) can never succeed. It is dropped and a notice says a change could not be saved.
 - **Conflicts.** There is no merge logic: the last change sent wins. The app is used from one phone, and a slot the user has acted on is never rewritten by plan edits.
 - **What needs a connection:** signing in; creating a day's log the first time (except from a notification, which queues the confirmation by plan slot, §5); editing foods, meals, schedules and settings. These show "Can't reach the server".

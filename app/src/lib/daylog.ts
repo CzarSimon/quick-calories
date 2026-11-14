@@ -12,6 +12,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { applyKcalChange, buildBaseTargets, macroFloors, microcycleFor, previousMicrocycle, projectDay, type DayProjection } from '@/domain';
 import {
   hasChanges,
+  newSlotId,
+  nextUnplannedSort,
   plannedSlots,
   reconcileDayLog,
   type DayLogChanges,
@@ -262,7 +264,7 @@ export async function loadDay(date: IsoDate, settings: SettingsValues): Promise<
   const position = microcycleFor(date, settings.microcycle_anchor_date, settings.microcycle_length_days);
   const data = await fetchOrCached({ queryKey: dayKey(date), queryFn: () => fetchDay(date, position.startDate) });
   // Include changes made on the phone that the server does not have yet.
-  return { ...data, slots: applyOps(data.slots, pendingOps()) };
+  return { ...data, slots: applyOps(data.slots, pendingOps(), data.dayLog?.id) };
 }
 
 export type DayState =
@@ -316,7 +318,10 @@ export function useDay(date: IsoDate, today: IsoDate): DayView {
   });
   // Changes waiting to be sent are shown as if they were already saved.
   const outbox = useOutbox();
-  const data = useMemo(() => (query.data ? { ...query.data, slots: applyOps(query.data.slots, outbox) } : undefined), [query.data, outbox]);
+  const data = useMemo(
+    () => (query.data ? { ...query.data, slots: applyOps(query.data.slots, outbox, query.data.dayLog?.id) } : undefined),
+    [query.data, outbox],
+  );
 
   const active = scheduleData.schedules.find((s) => s.is_active);
   const planDay = active?.days.find((d) => d.day_index === position.dayIndex);
@@ -435,5 +440,40 @@ export function useSaveLogSlot(date: IsoDate) {
   return useMutation({
     mutationFn: ({ slot, entries, status }: { slot: LoggedSlot; entries: EntryDraft[]; status: SlotStatus }) =>
       enqueueOp({ date, slotId: slot.id, status, entries }),
+  });
+}
+
+/**
+ * Log something eaten outside the plan as a new slot at the given time. Goes through the outbox,
+ * so it works offline: the slot's id is chosen here and later changes can refer to it before the
+ * server has it. Resolves to the new slot's id.
+ */
+export function useCreateUnplannedSlot(date: IsoDate) {
+  return useMutation({
+    mutationFn: async ({ dayLogId, slots, name, time, entries }: { dayLogId: string; slots: LoggedSlot[]; name: string; time: string; entries: EntryDraft[] }) => {
+      const slotId = newSlotId();
+      await enqueueOp({ date, slotId, status: 'confirmed', entries, create: { dayLogId, name, time, sort: nextUnplannedSort(slots) } });
+      return slotId;
+    },
+  });
+}
+
+/**
+ * Save an unplanned slot's name, time and items. Saving it with no items removes it: an empty
+ * open slot would leave the day's intake unknown in the week balance.
+ */
+export function useSaveUnplannedSlot(date: IsoDate) {
+  return useMutation({
+    mutationFn: ({ slotId, name, time, entries }: { slotId: string; name: string; time: string; entries: EntryDraft[] }) =>
+      entries.length > 0
+        ? enqueueOp({ date, slotId, status: 'confirmed', entries, fields: { name, time } })
+        : enqueueOp({ date, slotId, remove: true }),
+  });
+}
+
+/** Remove a slot from the day (an unplanned slot, or undoing one just logged). Goes through the outbox. */
+export function useRemoveSlot(date: IsoDate) {
+  return useMutation({
+    mutationFn: (slotId: string) => enqueueOp({ date, slotId, remove: true }),
   });
 }

@@ -6,7 +6,8 @@
 // Starts ./pocketbase (downloaded by scripts/ensure-pocketbase.sh) on a free port with a fresh
 // temporary data dir, creates a local superuser and two users, and checks: anonymous denial,
 // closed signup, two-user isolation, owner assignment, references to other users' records,
-// expired/tampered sessions, logout, the dev seed and a full happy-path record chain, and that
+// expired/tampered sessions, logout, the dev seed, a full happy-path record chain, unplanned
+// slots (client-chosen id, no plan slot), and that
 // all migrations roll back and re-apply.
 
 import { execFileSync, spawn } from "node:child_process";
@@ -307,12 +308,27 @@ async function run() {
       const entry = await A.collection("log_entries").getOne(a.log_entries, { expand: "log_slot.day_log.microcycle,meal" });
       assert(entry.expand?.log_slot?.expand?.day_log?.expand?.microcycle?.id === a.microcycles, "chain did not resolve");
     });
+
+    // 8. Unplanned slots: logged on the phone with an id chosen there, no plan slot, and items
+    // with no food or meal behind them.
+    await check("unplanned slot with a client-chosen id and no plan slot", async () => {
+      const id = "unplanned00001a";
+      const slot = await A.collection("log_slots").create({ id, user: aId, day_log: a.day_logs, plan_slot: "", name: "Fika", time: "10:42", kind: "open", status: "confirmed", sort: 1000 });
+      assert(slot.id === id && slot.plan_slot === "", "slot not created as sent");
+      const item = await A.collection("log_entries").create({ user: aId, log_slot: id, food: "", meal: "", name: "Carbonara, Trattoria", quantity: 1, kcal: 850, carbs_g: 90, protein_g: 35, fat_g: 38, origin: "adhoc", source: "manual", sort: 0 });
+      assert(item.food === "" && item.meal === "", "entry gained a reference");
+      await rejects(A.collection("log_slots").create({ id, user: aId, day_log: a.day_logs, name: "Again", time: "10:00", kind: "open", status: "confirmed" }), "same id twice");
+      await A.collection("log_slots").delete(id);
+    });
+    await check("unplanned slot in another user's day is refused", () =>
+      rejects(B.collection("log_slots").create({ id: "unplanned00002b", user: bId, day_log: a.day_logs, plan_slot: "", name: "Fika", time: "10:42", kind: "open", status: "confirmed", sort: 1000 }), "foreign day log"),
+    );
   } finally {
     server?.proc.kill();
     await new Promise((r) => setTimeout(r, 300));
   }
 
-  // 8. Rollback and re-apply
+  // 9. Rollback and re-apply
   await check("migrations roll back and re-apply", async () => {
     const out = pbCmd(dataDir, ["migrate", "down", "5"], "y\n");
     assert(/Reverted 1762300000_auth\.js/.test(out), "down did not revert all app migrations");

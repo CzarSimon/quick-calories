@@ -6,7 +6,8 @@
  * skipped or logged by hand is never changed by a plan edit.
  */
 
-import { scaleNutrition, type Nutrition } from '@/domain';
+import { macroKcal, scaleNutrition, type Nutrition } from '@/domain';
+import { parseNumber } from '@/lib/format';
 import type { Day } from '@/lib/schedules-model';
 import type { LogEntryRecord, LogSlotRecord, SlotKind, SlotStatus } from '@/lib/types';
 
@@ -73,6 +74,11 @@ export function isUntouched(slot: LoggedSlot): boolean {
   return slot.status === 'pending' && slot.entries.every((entry) => entry.origin === 'planned');
 }
 
+/** A slot that was copied from the plan at some point. Unplanned slots are always open and sort from UNPLANNED_SORT_START. */
+function cameFromPlan(slot: LoggedSlot): boolean {
+  return slot.kind === 'planned' || slot.sort < UNPLANNED_SORT_START;
+}
+
 export type DayLogChanges = {
   create: PlannedSlot[];
   update: { id: string; fields?: Pick<PlannedSlot, 'name' | 'time' | 'kind' | 'sort'>; entries?: EntryDraft[] }[];
@@ -104,8 +110,9 @@ export function reconcileDayLog(logged: LoggedSlot[], planned: PlannedSlot[]): D
     const existing = byPlanSlot.get(plan.planSlotId);
     if (!existing) {
       // Replacing a day's plan slots (e.g. copying from another day) must not duplicate a meal
-      // that was already confirmed under the old slot.
-      const alreadyHandled = keptOrphans.some((s) => s.name === plan.name && s.time === plan.time);
+      // that was already confirmed under the old slot. Only slots that came from the plan count:
+      // an unplanned "Snack" at 15:00 must not stop a newly planned "Snack" at 15:00.
+      const alreadyHandled = keptOrphans.some((s) => s.name === plan.name && s.time === plan.time && cameFromPlan(s));
       if (!alreadyHandled) changes.create.push(plan);
       continue;
     }
@@ -164,4 +171,122 @@ export function isDue(slot: Pick<LogSlotRecord, 'time'>, now: string | null): bo
 /** Pending planned slots with something to confirm, optionally only those already due. */
 export function confirmableSlots(slots: LoggedSlot[], now: string | null): LoggedSlot[] {
   return slots.filter((s) => s.kind === 'planned' && s.status === 'pending' && s.entries.length > 0 && isDue(s, now));
+}
+
+// ---------- unplanned slots ----------
+
+/** Unplanned slots sort after any planned slot at the same minute. */
+export const UNPLANNED_SORT_START = 1000;
+
+/**
+ * A slot that is not (or no longer) part of the plan: something eaten outside the planned meals.
+ * A planned slot whose plan slot was deleted after it was eaten also counts, which is accurate.
+ */
+export function isUnplanned(slot: Pick<LogSlotRecord, 'plan_slot'>): boolean {
+  return !slot.plan_slot;
+}
+
+/** The sort value for a new unplanned slot. */
+export function nextUnplannedSort(slots: Pick<LogSlotRecord, 'sort'>[]): number {
+  return Math.max(UNPLANNED_SORT_START - 1, ...slots.map((s) => s.sort)) + 1;
+}
+
+const ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789';
+
+/** A record id chosen on the phone: 15 characters of [a-z0-9], which PocketBase accepts on create. */
+export function newSlotId(random: () => number = Math.random): string {
+  let id = '';
+  for (let i = 0; i < 15; i++) id += ID_CHARS[Math.floor(random() * ID_CHARS.length)];
+  return id;
+}
+
+// ---------- what Today shows ----------
+
+export type NextUp =
+  /** One or more planned meals are past their time and not confirmed. */
+  | { kind: 'due'; slots: LoggedSlot[] }
+  /** Nothing is due; this planned meal is the next one. */
+  | { kind: 'upNext'; slot: LoggedSlot }
+  /** No planned meal is waiting. `openSlot` is an open slot with nothing logged, if there is one. */
+  | { kind: 'done'; openSlot: LoggedSlot | null };
+
+/** What the card at the top of Today offers. `now` is "HH:MM"; null for an earlier day (everything is due). */
+export function nextUp(slots: LoggedSlot[], now: string | null): NextUp {
+  const due = confirmableSlots(slots, now);
+  if (due.length > 0) return { kind: 'due', slots: due };
+  const upcoming = slots.find((s) => s.kind === 'planned' && s.status === 'pending' && s.entries.length > 0);
+  if (upcoming) return { kind: 'upNext', slot: upcoming };
+  const openSlot = slots.find((s) => s.kind === 'open' && !isUnplanned(s) && s.status === 'pending' && s.entries.length === 0) ?? null;
+  return { kind: 'done', openSlot };
+}
+
+export type SlotState = 'planned' | 'unconfirmed' | 'confirmed' | 'adjusted' | 'skipped' | 'open' | 'logged' | 'unplanned';
+
+/** The state word a slot row shows. */
+export function slotState(slot: LoggedSlot, now: string | null): SlotState {
+  if (slot.status === 'skipped') return 'skipped';
+  if (isUnplanned(slot)) return 'unplanned';
+  if (slot.kind === 'open') return slot.entries.length > 0 || slot.status === 'confirmed' ? 'logged' : 'open';
+  if (slot.status === 'confirmed') return 'confirmed';
+  if (slot.status === 'adjusted') return 'adjusted';
+  return isDue(slot, now) && slot.entries.length > 0 ? 'unconfirmed' : 'planned';
+}
+
+// ---------- quick entry ----------
+
+export type QuickEntryInput = { name: string; kcal: string; carbs: string; protein: string; fat: string };
+export type QuickEntryErrors = Partial<Record<keyof QuickEntryInput, string>>;
+
+/** kcal from macros at 4/4/9, or null when no macro was entered. */
+export function quickEntryMacroKcal(input: QuickEntryInput): number | null {
+  const values = [input.carbs, input.protein, input.fat];
+  if (values.every((v) => v.trim() === '')) return null;
+  const [carbs_g, protein_g, fat_g] = values.map((v) => parseNumber(v) ?? 0);
+  return Math.round(macroKcal({ carbs_g, protein_g, fat_g }));
+}
+
+/**
+ * A logged item typed in directly, with no library food or meal behind it (a restaurant dish).
+ * Name and either kcal or at least one macro are required; an empty macro counts as 0, and empty
+ * kcal is worked out from the macros. One portion is quantity 1, so the normal quantity row can
+ * log half or one and a half.
+ */
+export function quickEntryDraft(input: QuickEntryInput): { draft: EntryDraft; errors: null } | { draft: null; errors: QuickEntryErrors } {
+  const errors: QuickEntryErrors = {};
+  const name = input.name.trim();
+  if (!name) errors.name = 'Give it a name.';
+  const numbers: Record<'kcal' | 'carbs' | 'protein' | 'fat', number | null> = { kcal: null, carbs: null, protein: null, fat: null };
+  for (const key of ['kcal', 'carbs', 'protein', 'fat'] as const) {
+    if (input[key].trim() === '') continue;
+    numbers[key] = parseNumber(input[key]);
+    if (numbers[key] === null) errors[key] = 'Enter a number.';
+  }
+  const fromMacros = quickEntryMacroKcal(input);
+  if (input.kcal.trim() === '' && fromMacros === null) errors.kcal = 'Enter the calories or the macros.';
+  if (Object.keys(errors).length > 0) return { draft: null, errors };
+  const kcal = numbers.kcal ?? fromMacros ?? 0;
+  return {
+    draft: {
+      food: '',
+      meal: '',
+      name,
+      quantity: 1,
+      kcal: Math.round(kcal),
+      carbs_g: numbers.carbs ?? 0,
+      protein_g: numbers.protein ?? 0,
+      fat_g: numbers.fat ?? 0,
+      origin: 'adhoc',
+      source: 'manual',
+    },
+    errors: null,
+  };
+}
+
+/**
+ * The "these macros add up to about N kcal" hint: shown when the macros are complete and the
+ * typed kcal is missing or more than 10 kcal and 10 % away from them.
+ */
+export function macroKcalHint(kcal: number | null, fromMacros: number | null): number | null {
+  if (fromMacros === null || fromMacros <= 0) return null;
+  return kcal === null || Math.abs(kcal - fromMacros) > Math.max(10, fromMacros * 0.1) ? fromMacros : null;
 }

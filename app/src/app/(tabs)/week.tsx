@@ -8,7 +8,7 @@ import { ProgressBar } from '@/components/progress-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button, Card, Notice } from '@/components/ui';
-import { Spacing, TabScreenTopInset } from '@/constants/theme';
+import { ScreenMargin, Spacing, TabScreenTopInset } from '@/constants/theme';
 import { addDays } from '@/domain';
 import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
@@ -38,6 +38,7 @@ export default function WeekScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const { microcycle, summary } = week;
   const end = addDays(microcycle.startDate, microcycle.length - 1);
+  const todayIndex = summary?.days.findIndex((d) => d.when === 'today') ?? -1;
 
   const refresh = () => {
     setRefreshing(true);
@@ -52,13 +53,14 @@ export default function WeekScreen() {
           <View>
             <ThemedText type="eyebrow">
               Microcycle {shortDate(microcycle.startDate)} – {shortDate(end)}
+              {todayIndex >= 0 ? ` · Day ${todayIndex + 1} of ${microcycle.length}` : ''}
             </ThemedText>
             <ThemedText type="title">{offset === 0 ? 'This week' : offset === -1 ? 'Last week' : `${-offset} weeks ago`}</ThemedText>
           </View>
           <OfflineBanner />
           <View style={styles.nav}>
-            <Button label="‹ Earlier" compact onPress={() => setOffset(offset - 1)} testID="week-prev" />
-            {offset < 0 ? <Button label={offset === -1 ? 'This week ›' : 'Later ›'} compact onPress={() => setOffset(offset + 1)} testID="week-next" /> : null}
+            <Button label="‹ Earlier" variant="text" onPress={() => setOffset(offset - 1)} testID="week-prev" style={styles.navStart} />
+            {offset < 0 ? <Button label={offset === -1 ? 'This week ›' : 'Later ›'} variant="text" onPress={() => setOffset(offset + 1)} testID="week-next" /> : null}
           </View>
 
           {week.isLoading ? (
@@ -136,7 +138,7 @@ function DaysCard({ summary }: { summary: WeekSummary }) {
       {summary.days.map((day, i) => (
         <View key={day.date} style={[styles.day, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line }]} testID={`week-day-${i}`}>
           <View style={styles.dayHead}>
-            <ThemedText type="smallBold" themeColor={day.when === 'today' ? 'carb' : 'text'} style={styles.dayName}>
+            <ThemedText type="smallBold" themeColor={day.when === 'today' ? 'accent' : 'text'} style={styles.dayName}>
               {day.label}
             </ThemedText>
             <ThemedText type="small" style={[styles.grow, styles.tabular]}>
@@ -147,7 +149,7 @@ function DaysCard({ summary }: { summary: WeekSummary }) {
             </ThemedText>
           </View>
           {day.target && day.logged ? (
-            <ProgressBar consumed={day.eatenKcal ?? 0} projected={day.expectedKcal ?? 0} target={day.target.kcal} color="carb" softColor="carbSoft" height={8} />
+            <ProgressBar consumed={day.eatenKcal ?? 0} projected={day.expectedKcal ?? 0} target={day.target.kcal} color="text" softColor="planned" height={8} />
           ) : null}
           {day.target ? (
             <ThemedText type="small" themeColor="textSecondary" style={styles.tabular}>
@@ -229,8 +231,9 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   grow: { flex: 1, minWidth: 0 },
   tabular: { fontVariant: ['tabular-nums'] },
-  content: { padding: Spacing.three, paddingTop: Spacing.three + TabScreenTopInset, gap: Spacing.three, paddingBottom: 120 },
-  nav: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.two },
+  content: { paddingHorizontal: ScreenMargin, paddingTop: Spacing.three + TabScreenTopInset, gap: Spacing.three, paddingBottom: 120 },
+  nav: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.two, marginVertical: -Spacing.two },
+  navStart: { marginLeft: -Spacing.two },
   spinner: { marginTop: Spacing.five },
   split: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.three },
   end: { alignItems: 'flex-end' },

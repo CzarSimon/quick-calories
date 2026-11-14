@@ -154,6 +154,14 @@ describe('buildReminders', () => {
     expect(ids(buildReminders(input({ todayLog: done })))).not.toContain('qc:morning:2026-11-12');
   });
 
+  it('never reminds about or nudges for an unplanned slot', () => {
+    const fika = { ...logged('', 'Fika', '15:00', 'open', 'confirmed', [310]), id: 'u1', sort: 1000 };
+    const todayLog = { targets: null, slots: [logged('2-bf', 'Breakfast', '09:00', 'planned', 'confirmed', [551]), fika] };
+    const today = on(buildReminders(input({ todayLog })), '2026-11-11');
+    expect(today.filter((r) => r.title === 'Fika')).toEqual([]);
+    expect(ids(today)).not.toContain('qc:evening:2026-11-11');
+  });
+
   it('does not remind about a meal whose confirmation is queued', () => {
     const queued = [{ date: '2026-11-12', planSlotId: '3-bf' }];
     expect(ids(buildReminders(input({ queued })))).not.toContain('qc:slot:2026-11-12:3-bf');

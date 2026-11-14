@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { foodNutrition, mealNutrition, projectDay, roundNutrition, type DaySlotInput } from '@/domain';
+import { dayOutcome, foodNutrition, mealNutrition, projectDay, roundNutrition, type DaySlotInput } from '@/domain';
 
 const targets = { kcal: 3930, protein_g: 164, fat_g: 66, carbs_g: 670 };
 const e = (kcal: number, carbs_g: number, protein_g: number, fat_g: number, origin: 'planned' | 'adhoc' = 'planned') => ({
@@ -66,6 +66,17 @@ describe('projectDay', () => {
     expect(p.consumed.kcal).toBe(833 + 900);
     expect(p.openBudget).toBeNull();
     expect(p.remaining.kcal).toBe(3930 - (833 + 294 + 1100 + 600 + 900));
+  });
+
+  it('counts an unplanned slot as eaten and takes it out of the open-slot budget', () => {
+    const fika: DaySlotInput = { kind: 'open', status: 'confirmed', entries: [e(310, 40, 5, 15, 'adhoc')] };
+    const without = projectDay(slots, targets);
+    const p = projectDay([...slots, fika], targets);
+    expect(p.consumed.kcal).toBe(without.consumed.kcal + 310);
+    expect(p.openBudget?.kcal).toBe(without.openBudget!.kcal - 310);
+    const outcome = dayOutcome([...slots.filter((s) => s.kind !== 'open'), fika]);
+    expect(outcome.complete).toBe(true);
+    expect(outcome.eatenKcal).toBe(833 + 310);
   });
 
   it('shows a negative remainder when the day is projected over target', () => {

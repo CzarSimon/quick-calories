@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button, Card } from '@/components/ui';
-import { Spacing, TabScreenTopInset } from '@/constants/theme';
+import { ScreenMargin, Spacing, TabScreenTopInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatKcal, formatSignedKcal } from '@/lib/format';
 import { errorMessage } from '@/lib/library';
@@ -87,7 +87,7 @@ function ScheduleRow({ schedule }: { schedule: Schedule }) {
         ) : null}
       </View>
       {schedule.is_active ? (
-        <View style={[styles.badge, { backgroundColor: colors.carb }]}>
+        <View style={[styles.badge, { backgroundColor: colors.accent }]}>
           <ThemedText type="smallBold" themeColor="onAccent">
             Active
           </ThemedText>
@@ -99,7 +99,7 @@ function ScheduleRow({ schedule }: { schedule: Schedule }) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  content: { padding: Spacing.three, paddingTop: Spacing.three + TabScreenTopInset, gap: Spacing.two, paddingBottom: 120 },
+  content: { paddingHorizontal: ScreenMargin, paddingTop: Spacing.three + TabScreenTopInset, gap: Spacing.two, paddingBottom: 120 },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.two },
   row: {
     flexDirection: 'row',

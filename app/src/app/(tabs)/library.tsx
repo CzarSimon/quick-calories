@@ -1,29 +1,30 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Button, Card, MacroLine, Segmented } from '@/components/ui';
-import { Spacing, TabScreenTopInset } from '@/constants/theme';
+import { Button, Card, ListRow, Segmented, WEB_NO_OUTLINE } from '@/components/ui';
+import { Radius, ScreenMargin, Spacing, TabScreenTopInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { formatAmount, formatKcal } from '@/lib/format';
+import { formatAmount, formatKcal, formatNumber } from '@/lib/format';
 import { errorMessage, matchesSearch, useLibrary, type Meal } from '@/lib/library';
 import type { FoodRecord } from '@/lib/types';
 
-type Segment = 'foods' | 'meals';
+type Segment = 'meals' | 'foods';
 
 export default function LibraryScreen() {
   const colors = useTheme();
   const library = useLibrary();
-  const [segment, setSegment] = useState<Segment>('foods');
+  // Meals first: logging and planning mostly reuse whole meals.
+  const [segment, setSegment] = useState<Segment>('meals');
   const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
-  const noun = segment === 'foods' ? 'food' : 'meal';
   const all: (FoodRecord | Meal)[] = segment === 'foods' ? library.foods : library.meals;
   const rows = all.filter((row) => matchesSearch(row.name, query));
+  const createNew = () => router.push(segment === 'foods' ? '/food/new' : '/meal/new');
 
   const refresh = async () => {
     setRefreshing(true);
@@ -33,24 +34,9 @@ export default function LibraryScreen() {
 
   const header = (
     <View style={styles.header}>
-      <View style={styles.titleRow}>
-        <ThemedText type="title">Library</ThemedText>
-        <Button
-          label={`New ${noun}`}
-          variant="primary"
-          compact
-          testID="library-new"
-          onPress={() => router.push(segment === 'foods' ? '/food/new' : '/meal/new')}
-        />
-      </View>
-      <Segmented
-        value={segment}
-        onChange={setSegment}
-        options={[
-          { value: 'foods', label: `Foods${library.foods.length ? ` (${library.foods.length})` : ''}` },
-          { value: 'meals', label: `Meals${library.meals.length ? ` (${library.meals.length})` : ''}` },
-        ]}
-      />
+      <ThemedText type="title" accessibilityRole="header">
+        Library
+      </ThemedText>
       <TextInput
         accessibilityLabel={`Search ${segment}`}
         placeholder={`Search ${segment}`}
@@ -61,6 +47,21 @@ export default function LibraryScreen() {
         clearButtonMode="while-editing"
         style={[styles.search, { backgroundColor: colors.backgroundElement, borderColor: colors.line, color: colors.text }]}
       />
+      <Segmented
+        variant="underline"
+        value={segment}
+        onChange={(next) => setSegment(next)}
+        options={[
+          { value: 'meals', label: 'Meals' },
+          { value: 'foods', label: 'Foods' },
+        ]}
+      />
+      <View style={styles.countRow}>
+        <ThemedText type="caption" themeColor="textSecondary" style={styles.grow}>
+          {query ? `${rows.length} of ${all.length}` : all.length} {segment}
+        </ThemedText>
+        <Button label={segment === 'foods' ? '+ Food' : '+ Meal'} variant="text" onPress={createNew} testID="library-new" />
+      </View>
     </View>
   );
 
@@ -69,20 +70,29 @@ export default function LibraryScreen() {
     empty = <ActivityIndicator style={styles.spinner} />;
   } else if (library.error) {
     empty = (
-      <Card>
+      <Card tone="selected">
         <ThemedText type="small">{errorMessage(library.error)}</ThemedText>
-        <Button label="Try again" onPress={refresh} />
+        <Button label="Try again" onPress={refresh} style={{ backgroundColor: colors.backgroundElement }} />
       </Card>
     );
   } else if (query && all.length > 0) {
     empty = (
-      <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-        No {segment} match “{query}”.
-      </ThemedText>
+      <View style={styles.noMatch}>
+        <ThemedText type="small" themeColor="textSecondary">
+          No {segment} match “{query}”.
+        </ThemedText>
+        <Button
+          label={`Create “${query.trim()}” as a food`}
+          variant="text"
+          onPress={() => router.push({ pathname: '/food/[id]', params: { id: 'new', name: query.trim() } })}
+          testID="library-create-from-search"
+          style={styles.start}
+        />
+      </View>
     );
   } else {
     empty = (
-      <Card>
+      <Card tone="selected">
         <ThemedText type="smallBold">No {segment} yet</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
           {segment === 'foods'
@@ -104,8 +114,8 @@ export default function LibraryScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
-          renderItem={({ item }) =>
-            segment === 'foods' ? <FoodRow food={item as FoodRecord} /> : <MealRow meal={item as Meal} />
+          renderItem={({ item, index }) =>
+            segment === 'foods' ? <FoodRow food={item as FoodRecord} first={index === 0} /> : <MealRow meal={item as Meal} first={index === 0} />
           }
         />
       </SafeAreaView>
@@ -113,72 +123,43 @@ export default function LibraryScreen() {
   );
 }
 
-function FoodRow({ food }: { food: FoodRecord }) {
-  const colors = useTheme();
+const macros = (n: { carbs_g: number; protein_g: number; fat_g: number }) =>
+  `C ${formatNumber(n.carbs_g)} · P ${formatNumber(n.protein_g)} · F ${formatNumber(n.fat_g)}`;
+
+function FoodRow({ food, first }: { food: FoodRecord; first: boolean }) {
   return (
-    <Pressable
-      accessibilityRole="button"
+    <ListRow
+      first={first}
+      title={food.name}
+      subtitle={`per ${formatAmount(food.ref_amount, food.unit)} · ${macros(food)}`}
+      trailing={`${formatKcal(food.kcal)} kcal`}
       onPress={() => router.push({ pathname: '/food/[id]', params: { id: food.id } })}
-      style={({ pressed }) => [styles.row, { backgroundColor: colors.backgroundElement, borderColor: colors.line, opacity: pressed ? 0.7 : 1 }]}>
-      <View style={styles.rowMain}>
-        <ThemedText type="smallBold">{food.name}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          per {formatAmount(food.ref_amount, food.unit)}
-        </ThemedText>
-      </View>
-      <View style={styles.rowEnd}>
-        <ThemedText type="smallBold" style={styles.tabular}>
-          {formatKcal(food.kcal)} kcal
-        </ThemedText>
-        <MacroLine nutrition={food} />
-      </View>
-    </Pressable>
+      accessibilityLabel={`${food.name}, ${formatKcal(food.kcal)} kcal per ${formatAmount(food.ref_amount, food.unit)}`}
+    />
   );
 }
 
-function MealRow({ meal }: { meal: Meal }) {
-  const colors = useTheme();
+function MealRow({ meal, first }: { meal: Meal; first: boolean }) {
   return (
-    <Pressable
-      accessibilityRole="button"
+    <ListRow
+      first={first}
+      title={meal.name}
+      subtitle={meal.items.length ? meal.items.map((item) => item.food.name).join(' · ') : 'No foods yet'}
+      trailing={`${formatKcal(meal.nutrition.kcal)} kcal`}
       onPress={() => router.push({ pathname: '/meal/[id]', params: { id: meal.id } })}
-      style={({ pressed }) => [styles.row, { backgroundColor: colors.backgroundElement, borderColor: colors.line, opacity: pressed ? 0.7 : 1 }]}>
-      <View style={styles.rowMain}>
-        <ThemedText type="smallBold">{meal.name}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
-          {meal.items.length
-            ? meal.items.map((item) => `${item.food.name} ${formatAmount(item.quantity, item.food.unit)}`).join(' · ')
-            : 'No foods yet'}
-        </ThemedText>
-      </View>
-      <View style={styles.rowEnd}>
-        <ThemedText type="smallBold" style={styles.tabular}>
-          {formatKcal(meal.nutrition.kcal)} kcal
-        </ThemedText>
-        <MacroLine nutrition={meal.nutrition} />
-      </View>
-    </Pressable>
+      accessibilityLabel={`${meal.name}, ${formatKcal(meal.nutrition.kcal)} kcal`}
+    />
   );
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  content: { padding: Spacing.three, paddingTop: Spacing.three + TabScreenTopInset, gap: Spacing.two, paddingBottom: 120 },
-  header: { gap: Spacing.three, marginBottom: Spacing.two },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.two },
-  search: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 12,
-    paddingHorizontal: Spacing.three,
-  },
-  rowMain: { flex: 1, minWidth: 0, gap: 2 },
-  rowEnd: { alignItems: 'flex-end', gap: 2 },
-  tabular: { fontVariant: ['tabular-nums'] },
+  grow: { flex: 1, minWidth: 0 },
+  content: { paddingHorizontal: ScreenMargin, paddingTop: Spacing.three + TabScreenTopInset, paddingBottom: 120 },
+  header: { gap: Spacing.three },
+  search: { borderWidth: 1, borderRadius: Radius.medium, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, ...WEB_NO_OUTLINE },
+  countRow: { flexDirection: 'row', alignItems: 'center', marginTop: -Spacing.two },
+  noMatch: { gap: Spacing.one, marginTop: Spacing.three },
+  start: { alignSelf: 'flex-start', marginLeft: -Spacing.two },
   spinner: { marginTop: Spacing.five },
-  centered: { textAlign: 'center', marginTop: Spacing.four },
 });

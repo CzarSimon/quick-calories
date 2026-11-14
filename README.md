@@ -34,6 +34,12 @@ Run the backend tests. They start a throwaway PocketBase built from the migratio
 npm run test:backend
 ```
 
+Take screenshots of every screen from the web build with sample data (needs Playwright with Chromium), or with `--check` drive the main logging flows and check the results:
+
+```bash
+npm run screenshots
+```
+
 Start a local backend. It downloads PocketBase 0.40.4 to `./pocketbase` and keeps its data in `.local/pb_data`:
 
 ```bash
@@ -84,7 +90,7 @@ npm test
 **v0.1 prototype.** Every screen in the design is built: Today, Week, Library, Schedules and Settings, with meal reminders, Apple Health body weight, corrections across the week and offline logging.
 
 - **Backend:** the schema is deployed to production (record in [`docs/releases/`](docs/releases/)). From now on only additive schema changes pass the hosting platform's upgrade gate.
-- **Tests** (run on every pull request by GitHub Actions, `.github/workflows/ci.yml`): 133 unit tests for the calculations and data logic (`cd app && npm test`) and 151 backend access-rule checks (`npm run test:backend`).
+- **Tests** (run on every pull request by GitHub Actions, `.github/workflows/ci.yml`): 165 unit tests for the calculations and data logic (`cd app && npm test`) and 153 backend access-rule checks (`npm run test:backend`).
 - **Still to verify on an iPhone:** the device checklist in [`docs/NOTIFICATIONS.md`](docs/NOTIFICATIONS.md), which covers notifications, Apple Health and offline use.
 
 **Next**

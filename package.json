@@ -5,7 +5,8 @@
   "scripts": {
     "backend:dev": "scripts/dev-backend.sh",
     "seed": "node scripts/seed.mjs",
-    "test:backend": "node scripts/test-backend.mjs"
+    "test:backend": "node scripts/test-backend.mjs",
+    "screenshots": "node scripts/screenshots.mjs"
   },
   "devDependencies": {
     "pocketbase": "0.28.2"

@@ -1,6 +1,6 @@
 /**
- * The outbox: changes to a day's log (confirm, skip, save what I ate) are stored on the phone
- * first and sent to the server in order. Online that takes a moment; offline they wait.
+ * The outbox: changes to a day's log (confirm, skip, save what I ate, and unplanned slots
+ * created, edited or removed) are stored on the phone first and sent to the server in order. Online that takes a moment; offline they wait.
  *
  * Screens show pending operations by laying them over the loaded data (applyOps), so a change is
  * visible at once and stays visible across restarts until the server has it.
@@ -12,7 +12,7 @@ import { useSyncExternalStore } from 'react';
 import type { DayData } from '@/lib/daylog';
 import { replaceEntries } from '@/lib/log-entries';
 import { addOp, applyOps, sendOps, type NewOp, type OutboxOp } from '@/lib/outbox-model';
-import { authReady, pb } from '@/lib/pocketbase';
+import { authReady, currentUserId, pb } from '@/lib/pocketbase';
 import { queryClient } from '@/lib/query-client';
 import type { LogEntryRecord } from '@/lib/types';
 
@@ -48,16 +48,52 @@ export async function enqueueOp(op: NewOp): Promise<void> {
   void flushOutbox();
 }
 
+const notFound = (err: unknown) => (err as { status?: number })?.status === 404;
+
 async function send(op: OutboxOp) {
   inFlightId = op.id;
   try {
+    if (op.remove) {
+      try {
+        await pb.collection('log_slots').delete(op.slotId);
+      } catch (err) {
+        if (!notFound(err)) throw err; // already gone
+      }
+      return;
+    }
+    let created = false;
+    if (op.create) {
+      // Look first, so a retry after a lost response does not try to create the slot twice. Unlike
+      // treating any refusal as "already there", this still reports a real validation error.
+      try {
+        await pb.collection('log_slots').getOne(op.slotId);
+      } catch (err) {
+        if (!notFound(err)) throw err;
+        const { dayLogId, name, time, sort } = op.create;
+        await pb.collection('log_slots').create({
+          id: op.slotId,
+          user: currentUserId(),
+          day_log: dayLogId,
+          plan_slot: '',
+          name: op.fields?.name ?? name,
+          time: op.fields?.time ?? time,
+          kind: 'open',
+          status: op.status ?? 'confirmed',
+          sort,
+        });
+        created = true;
+      }
+    }
+    if (op.fields && !created) await pb.collection('log_slots').update(op.slotId, op.fields);
     if (op.entries) {
-      const existing = await pb
-        .collection('log_entries')
-        .getFullList<LogEntryRecord>({ filter: pb.filter('log_slot = {:id}', { id: op.slotId }), sort: 'sort' });
+      const existing = created
+        ? []
+        : await pb
+            .collection('log_entries')
+            .getFullList<LogEntryRecord>({ filter: pb.filter('log_slot = {:id}', { id: op.slotId }), sort: 'sort' });
       await replaceEntries(op.slotId, existing, op.entries);
     }
-    await pb.collection('log_slots').update(op.slotId, { status: op.status });
+    if (op.status && !created) await pb.collection('log_slots').update(op.slotId, { status: op.status });
   } finally {
     inFlightId = null;
   }
@@ -76,7 +112,7 @@ export function flushOutbox(): Promise<void> {
         if (outcome === 'sent') {
           // Fold the change into the loaded data before dropping it, so the screen does not
           // flick back to the old state while the day is refetched.
-          queryClient.setQueryData<DayData>(['day', op.date], (data) => (data ? { ...data, slots: applyOps(data.slots, [op]) } : data));
+          queryClient.setQueryData<DayData>(['day', op.date], (data) => (data ? { ...data, slots: applyOps(data.slots, [op], data.dayLog?.id) } : data));
           dates.add(op.date);
         } else {
           rejected++;

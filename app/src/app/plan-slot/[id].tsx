@@ -135,7 +135,7 @@ function SlotForm({ dayPlanId, slot, library }: { dayPlanId: string; slot?: Slot
           accessibilityLabel="Remind me"
           value={notify}
           onValueChange={setNotify}
-          trackColor={{ true: colors.carb, false: colors.line }}
+          trackColor={{ true: colors.accent, false: colors.line }}
         />
       </Card>
 

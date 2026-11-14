@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quick Calories — design directions</title>
+<link rel="stylesheet" href="review.css">
+</head>
+<body>
+<header class="review-header"><a href="#" class="wordmark">quick calories<span>FIELDNOTES / ITERATION 03</span></a><span class="review-label">A personal tool for fuelling training.</span><a href="README.md">Review notes ↗</a></header>
+<main>
+<section class="intro"><div><div class="kicker">LESS LOGGING. MORE LIVING.</div><h1>A rhythm, not a chore.</h1><p>Fieldnotes + Quick Q.<br>Your plan first. The room around it, clearly shown.</p></div><div class="review-controls"><select id="direction" hidden><option value="fieldnotes">Fieldnotes</option></select><label>Appearance<select id="appearance"><option value="light">Light</option><option value="dark">Dark</option></select></label><label>Explore a screen<select id="screen"><option value="today">Today</option><option value="library">Library</option><option value="meal">Build a meal</option><option value="food">Add a food</option><option value="week">Week</option><option value="schedules">Schedules</option><option value="settings">Settings</option></select></label><button id="reset">Reset sample</button></div></section>
+<section class="study">
+<aside class="direction-copy"><span id="direction-number" class="kicker">DIRECTION 01</span><h2 id="direction-title">Fieldnotes</h2><p id="direction-description">The quiet confidence of a well-used notebook. Warm paper, evergreen ink, and a daily rhythm you can see at a glance.</p><div class="swatches" id="swatches"></div><dl><dt>THE CHARACTER</dt><dd id="character">Warm. Personal. Deliberate.</dd><dt>THE PRIORITY</dt><dd id="priority">Confirm your plan. See what is still available.</dd><dt>TRY IT</dt><dd>Confirm the snack, adjust a portion, or add a food to your library. Everything here is sample data.</dd></dl><p class="footnote">Native iOS headers and tabs are represented schematically. This is a design prototype, not the running Expo app.</p></aside>
+<div class="phone-wrap"><div id="phone" class="phone fieldnotes light"><div class="status-bar"><b>12:10</b><span>●●● ▰</span></div><div id="app"></div><div class="home-indicator"></div></div></div>
+<aside class="design-notes"><span class="kicker">A FEW INTENTIONAL CHOICES</span><div><span>01</span><h3>Act first.</h3><p>The next meal lives in the first screen. One tap confirms it; an adjustment is next to it.</p></div><div><span>02</span><h3>Know what is available.</h3><p>One view combines remaining calories and macros with eaten and planned progress.</p></div><div><span>03</span><h3>Build once. Repeat.</h3><p>Every meal row opens its log. New food keeps the original form layout, with Fieldnotes colours.</p></div></aside>
+</section>
+<section class="identity"><div class="identity-header"><div><span class="kicker">QUICK Q · SELECTED IDENTITY</span><h2>A small mark.<br>A familiar place.</h2></div><p>Shown as a wordmark, an app icon, and at small size.</p></div><div id="identity-grid" class="identity-grid"></div></section>
+<footer>QUICK CALORIES · NOVEMBER 2026 <span>Exploration only · no production data</span></footer>
+</main><script src="review.js"></script>
+</body></html>

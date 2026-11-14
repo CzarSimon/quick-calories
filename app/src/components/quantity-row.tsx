@@ -1,8 +1,8 @@
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Button, MacroLine } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
+import { Button } from '@/components/ui';
+import { Radius, Spacing } from '@/constants/theme';
 import type { Nutrition } from '@/domain';
 import { useTheme } from '@/hooks/use-theme';
 import { formatKcal, formatNumber, parseNumber } from '@/lib/format';
@@ -28,15 +28,15 @@ export function QuantityRow({ name, nutrition, quantity, unit, step, onChange, o
   const bump = (direction: 1 | -1) => onChange(formatNumber(Math.max(step, (parsed ?? 0) + direction * step)));
 
   return (
-    <View style={[styles.item, { borderTopColor: colors.line }]}>
+    <View style={[styles.item, { borderBottomColor: colors.line }]}>
       <View style={styles.head}>
         <View style={styles.grow}>
-          <ThemedText type="smallBold">{name}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.tabular}>
-            {formatKcal(nutrition.kcal)} kcal · <MacroLine nutrition={nutrition} />
+          <ThemedText type="defaultBold">{name}</ThemedText>
+          <ThemedText type="caption" themeColor="textSecondary" tabular>
+            {formatKcal(nutrition.kcal)} kcal · C {formatNumber(nutrition.carbs_g)} · P {formatNumber(nutrition.protein_g)} · F {formatNumber(nutrition.fat_g)}
           </ThemedText>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${name}`} hitSlop={8} onPress={onRemove}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${name}`} hitSlop={8} onPress={onRemove} style={styles.remove}>
           <ThemedText type="smallBold" themeColor="over">
             Remove
           </ThemedText>
@@ -44,7 +44,7 @@ export function QuantityRow({ name, nutrition, quantity, unit, step, onChange, o
       </View>
       <View style={styles.quantityRow}>
         <Button label="−" compact onPress={() => bump(-1)} style={styles.stepButton} />
-        <View style={[styles.box, { borderColor: bad ? colors.over : colors.line, backgroundColor: colors.backgroundSelected }]}>
+        <View style={[styles.box, { borderColor: bad ? colors.over : colors.line, backgroundColor: colors.backgroundElement }]}>
           <TextInput
             accessibilityLabel={`Quantity of ${name}`}
             value={quantity}
@@ -71,10 +71,11 @@ export function QuantityRow({ name, nutrition, quantity, unit, step, onChange, o
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   tabular: { fontVariant: ['tabular-nums'] },
-  item: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.two, gap: Spacing.two },
+  item: { borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: Spacing.three, gap: Spacing.two },
   head: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
+  remove: { minHeight: 44, minWidth: 44, alignItems: 'flex-end' },
   quantityRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   stepButton: { width: 44 },
-  box: { flex: 1, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, gap: Spacing.one },
+  box: { flex: 1, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: Radius.medium, paddingHorizontal: 12, gap: Spacing.one, minHeight: 44 },
   input: { flex: 1, minWidth: 0, paddingVertical: 8, fontSize: 16, textAlign: 'right', fontVariant: ['tabular-nums'] },
 });

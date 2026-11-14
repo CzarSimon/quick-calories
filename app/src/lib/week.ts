@@ -94,7 +94,7 @@ export function useWeek(today: IsoDate, offset: number, fallbackBwKg: number | n
   const bwKg = record && record.bw_kg > 0 ? record.bw_kg : fallbackBwKg;
   const active = scheduleData.schedules.find((s) => s.is_active);
   const outbox = useOutbox();
-  const logs = useMemo(() => query.data?.logs.map((l) => ({ ...l, slots: applyOps(l.slots, outbox) })), [query.data, outbox]);
+  const logs = useMemo(() => query.data?.logs.map((l) => ({ ...l, slots: applyOps(l.slots, outbox, l.dayLog.id) })), [query.data, outbox]);
 
   const summary = useMemo(() => {
     if (!logs) return null;
