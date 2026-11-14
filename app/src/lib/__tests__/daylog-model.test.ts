@@ -3,7 +3,15 @@ import { describe, expect, it } from '@jest/globals';
 import {
   confirmableSlots,
   hasChanges,
+  isUnplanned,
   isUntouched,
+  macroKcalHint,
+  newSlotId,
+  nextUnplannedSort,
+  nextUp,
+  quickEntryDraft,
+  slotState,
+  UNPLANNED_SORT_START,
   plannedSlots,
   reconcileDayLog,
   scaleEntry,
@@ -157,6 +165,140 @@ describe('entries', () => {
   it('marks an open slot confirmed once something is logged', () => {
     expect(statusAfterSave('open', [], [draft('Pizza', 1, 900, { origin: 'adhoc' })])).toBe('confirmed');
     expect(statusAfterSave('open', [], [])).toBe('pending');
+  });
+});
+
+describe('reconcileDayLog with unplanned slots', () => {
+  const fika = draft('Cinnamon bun', 1, 310, { food: '', origin: 'adhoc' });
+  const unplanned = (id: string, name: string, time: string, sort = UNPLANNED_SORT_START) =>
+    logged(id, '', name, time, 'confirmed', [fika], 'open', sort);
+
+  it('keeps a confirmed unplanned slot and creates nothing for it', () => {
+    const changes = reconcileDayLog([logged('s1', 'p1', 'Breakfast', '09:00', 'pending', [oats]), unplanned('u1', 'Fika', '10:42')], [planned('p1', 'Breakfast', '09:00', [oats])]);
+    expect(hasChanges(changes)).toBe(false);
+  });
+
+  it('still creates a planned slot with the same name and time as an unplanned one', () => {
+    const changes = reconcileDayLog([unplanned('u1', 'Snack', '15:00')], [planned('p9', 'Snack', '15:00', [banana])]);
+    expect(changes.create.map((p) => p.planSlotId)).toEqual(['p9']);
+    expect(changes.remove).toEqual([]);
+  });
+
+  it('still does not duplicate a handled open plan slot after the plan slots are replaced', () => {
+    const dinner = logged('s1', '', 'Dinner', '18:30', 'confirmed', [fika], 'open', 3);
+    const changes = reconcileDayLog([dinner], [planned('new', 'Dinner', '18:30', [], 'open', 3)]);
+    expect(changes.create).toEqual([]);
+  });
+});
+
+describe('unplanned slot helpers', () => {
+  it('recognises a slot without a plan slot', () => {
+    expect(isUnplanned({ plan_slot: '' })).toBe(true);
+    expect(isUnplanned({ plan_slot: 'p1' })).toBe(false);
+  });
+
+  it('sorts new unplanned slots after the plan and after each other', () => {
+    expect(nextUnplannedSort([{ sort: 0 }, { sort: 4 }])).toBe(UNPLANNED_SORT_START);
+    expect(nextUnplannedSort([{ sort: 2 }, { sort: UNPLANNED_SORT_START }])).toBe(UNPLANNED_SORT_START + 1);
+  });
+
+  it('makes 15-character ids from [a-z0-9]', () => {
+    const id = newSlotId();
+    expect(id).toMatch(/^[a-z0-9]{15}$/);
+    expect(newSlotId(() => 0)).toBe('aaaaaaaaaaaaaaa');
+  });
+});
+
+describe('nextUp', () => {
+  const breakfast = logged('s1', 'p1', 'Breakfast', '09:00', 'pending', [oats]);
+  const snack = logged('s2', 'p2', 'Snack', '11:30', 'pending', [banana]);
+  const dinner = logged('s3', 'p3', 'Dinner', '18:30', 'pending', [], 'open');
+
+  it('lists the due meals', () => {
+    expect(nextUp([breakfast, snack, dinner], '12:10')).toEqual({ kind: 'due', slots: [breakfast, snack] });
+    expect(nextUp([breakfast, snack, dinner], '10:00')).toEqual({ kind: 'due', slots: [breakfast] });
+  });
+
+  it('offers the next planned meal when nothing is due', () => {
+    expect(nextUp([breakfast, snack, dinner], '08:00')).toEqual({ kind: 'upNext', slot: breakfast });
+  });
+
+  it('is done when no planned meal waits, pointing at an empty open slot', () => {
+    const done = [{ ...breakfast, status: 'confirmed' as const }, { ...snack, status: 'skipped' as const }];
+    expect(nextUp([...done, dinner], '12:10')).toEqual({ kind: 'done', openSlot: dinner });
+    expect(nextUp(done, '12:10')).toEqual({ kind: 'done', openSlot: null });
+  });
+
+  it('treats every pending meal as due on an earlier day', () => {
+    expect(nextUp([breakfast, snack, dinner], null)).toEqual({ kind: 'due', slots: [breakfast, snack] });
+  });
+
+  it('does not point at an unplanned slot', () => {
+    const fika = logged('u1', '', 'Fika', '10:42', 'pending', [], 'open', UNPLANNED_SORT_START);
+    expect(nextUp([fika], '12:10')).toEqual({ kind: 'done', openSlot: null });
+  });
+});
+
+describe('slotState', () => {
+  const at = (status: SlotStatus, entries: EntryDraft[] = [oats], kind: SlotKind = 'planned', planSlot = 'p1') =>
+    logged('s', planSlot, 'Slot', '11:30', status, entries, kind);
+
+  it('names every state', () => {
+    expect(slotState(at('pending'), '10:00')).toBe('planned');
+    expect(slotState(at('pending'), '12:00')).toBe('unconfirmed');
+    expect(slotState(at('pending', []), '12:00')).toBe('planned');
+    expect(slotState(at('confirmed'), '12:00')).toBe('confirmed');
+    expect(slotState(at('adjusted'), '12:00')).toBe('adjusted');
+    expect(slotState(at('skipped'), '12:00')).toBe('skipped');
+    expect(slotState(at('pending', [], 'open'), '12:00')).toBe('open');
+    expect(slotState(at('confirmed', [oats], 'open'), '12:00')).toBe('logged');
+    expect(slotState(at('confirmed', [oats], 'open', ''), '12:00')).toBe('unplanned');
+  });
+
+  it('shows a skipped unplanned slot as skipped', () => {
+    expect(slotState(at('skipped', [oats], 'open', ''), '12:00')).toBe('skipped');
+  });
+});
+
+describe('quickEntryDraft', () => {
+  const input = { name: 'Carbonara, Trattoria', kcal: '850', carbs: '90', protein: '35', fat: '38' };
+
+  it('builds an item with no library reference', () => {
+    expect(quickEntryDraft(input)).toEqual({
+      draft: { food: '', meal: '', name: 'Carbonara, Trattoria', quantity: 1, kcal: 850, carbs_g: 90, protein_g: 35, fat_g: 38, origin: 'adhoc', source: 'manual' },
+      errors: null,
+    });
+  });
+
+  it('works out kcal from the macros when it is left empty, and counts empty macros as 0', () => {
+    expect(quickEntryDraft({ ...input, kcal: '', fat: '' }).draft?.kcal).toBe(500);
+    expect(quickEntryDraft({ ...input, kcal: '' }).draft?.kcal).toBe(842);
+  });
+
+  it('accepts kcal alone', () => {
+    expect(quickEntryDraft({ name: 'Ice cream', kcal: '250', carbs: '', protein: '', fat: '' }).draft).toMatchObject({ kcal: 250, carbs_g: 0 });
+  });
+
+  it('accepts a decimal comma', () => {
+    expect(quickEntryDraft({ ...input, fat: '38,5' }).draft?.fat_g).toBe(38.5);
+  });
+
+  it('reports what is missing or wrong', () => {
+    expect(quickEntryDraft({ name: ' ', kcal: '', carbs: '', protein: '', fat: '' }).errors).toEqual({
+      name: 'Give it a name.',
+      kcal: 'Enter the calories or the macros.',
+    });
+    expect(quickEntryDraft({ ...input, protein: 'lots' }).errors).toEqual({ protein: 'Enter a number.' });
+  });
+});
+
+describe('macroKcalHint', () => {
+  it('suggests the macro kcal when the typed kcal is missing or far off', () => {
+    expect(macroKcalHint(null, 842)).toBe(842);
+    expect(macroKcalHint(700, 842)).toBe(842);
+    expect(macroKcalHint(850, 842)).toBeNull();
+    expect(macroKcalHint(null, null)).toBeNull();
+    expect(macroKcalHint(null, 0)).toBeNull();
   });
 });
 
