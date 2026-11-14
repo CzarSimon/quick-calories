@@ -51,7 +51,8 @@ These were agreed with the owner. Proposals can change *how* they look and feel,
 
 **Daily use**
 - Planned meals are confirmed with **one tap**: "Ate as planned" on Today, or from the notification. **Bulk confirm** appears when two or more meals are past due.
-- Today shows **eaten**, **projected** (eaten + still planned) and **target**, for kcal and each macro, plus **what is left for the open slot** (dinner).
+- Today shows **eaten**, **projected** (eaten + still planned) and **target**, for kcal and each macro, and **what is still available** after the planned meals, which is what is left for the open slot (dinner).
+- Something eaten outside the plan is logged as its own **unplanned** row at the time it was eaten. A one-off dish can be logged by typing its macros, without creating a library item.
 - Reminders fire at slot times, with an evening nudge for unconfirmed meals and a morning nudge about yesterday.
 - Logging works offline. Changes are queued and sent later, and a banner says so.
 
@@ -64,76 +65,68 @@ These were agreed with the owner. Proposals can change *how* they look and feel,
 ## Constraints on proposals
 
 - **Platform:** iOS only. Expo SDK 58 and React Native 0.88, with `expo-router` **native tabs** (the iOS system tab bar, "liquid glass") and **native stack headers** (translucent, with a back button). The tab bar and headers are system components; proposals should work with them, not replace them.
-- **Implementation:** plain React Native `StyleSheet`, with no UI kit. Colours come from tokens in `app/src/constants/theme.ts`, in light and dark. Text uses the system font (SF Pro on iOS), set in `ThemedText` with the variants title 32/700, subtitle 20/600, default 16, small 14, smallBold 14/700, and eyebrow 12/600 uppercase. A custom display font is possible but would need justifying.
+- **Implementation:** plain React Native `StyleSheet`, with no UI kit. Colours come from tokens in `app/src/constants/theme.ts`, in light and dark. Text is set in `ThemedText`: the system serif (New York) for display 44 and title 32, SF Pro for subtitle 20, default 16, small 14, caption 13 and eyebrow 12 uppercase. No font files are bundled.
 - **Data:** proposals can rely on everything described above. New stored fields are possible, but the backend only accepts *additive* changes, such as a new optional field or collection.
 - **Accessibility:** support Dynamic Type where feasible, keep contrast legible in both themes, and keep touch targets at 44 pt or more.
 
 ## The current visual system
 
-- **Palette:** cool blue-grey neutrals. Each macro has its own colour, used everywhere: **carbs amber** (the "fuel" accent, also used as the primary button colour), **protein teal**, **fat violet**. Red marks "over target". The light background is #E9EDF1 with white cards; the dark background is #0D1318 with #162029 cards.
-- **Components** (`app/src/components/ui.tsx` and others):
-  - Card, a white rounded box with a hairline border.
-  - Button: primary is amber; secondary is white with a border; the danger variant has red text.
-  - Field: uppercase label above the input, optional unit suffix, error text below.
-  - Segmented control, Chip, and Notice (amber for warnings, grey for information).
-  - MacroLine: "C 60 · P 13 · F 7" in macro colours.
-  - NutritionSummary: big kcal number with three macro tiles.
-  - ProgressBar: solid for eaten, soft for planned, a dark tick for the target.
-  - QuantityRow: − / typed value / + with Remove.
-  - LibraryPicker: a sheet with search, plus Meals and Foods segments.
-- The original mockup used Barlow Condensed for numbers and a dashed amber border for the dinner budget. The dashed card survived; the font did not.
+The app uses the **Fieldnotes** direction with the **Quick Q** mark, chosen in the previous review round (`docs/design-directions/`) and implemented as described in `docs/plans/fieldnotes-and-unplanned.md`.
+
+- **Palette:** warm paper and evergreen. Light background `#F8F6EF`, dark `#17241D`. One accent colour carries every action (buttons, links, focus, switches, the tab tint): `#2C5540` in light, `#BED4A6` in dark. Macro colours (carbs ochre, protein green, fat mauve) appear only in the detailed macro bars. Red is kept for errors and destructive actions; going over a target is said in words.
+- **Type:** the iOS system serif (New York) for screen titles and the one hero number per screen; SF Pro for everything else, with tabular figures for numbers. Sizes: display 44, title 32, subtitle 20, body 16, small 14, caption 13 (the smallest), eyebrow 12 uppercase.
+- **Components** (`app/src/components/ui.tsx` and others): flat `ListRow`s with hairlines instead of a card per row; `Card` only for the current action and for forms; buttons in four variants (primary filled, tonal secondary, text, danger); `SectionHeader`, `Disclosure`, `MacroColumns`, a floating `Toast` with Undo, `ProgressBar` (eaten, still planned, target marker) and the day's `SegmentedBar`.
+- **Tokens:** `app/src/constants/theme.ts` (colours in light and dark, spacing, radii, the 20 pt screen margin).
 
 ## Screenshots
 
 **Read these first:**
-- **Taken from the web build, not the iPhone.** The web build is only used for development testing; screenshots are 390 pt wide at 2×.
-- **On the iPhone the tab bar is at the bottom** as the native iOS bar. On web it shows as a pill at the top.
-- **Headers on the iPhone are native and translucent,** and fonts are SF Pro.
-- **The `-full` / long images show the whole scrolled content** of a screen; the others show the first screen as seen on the phone.
-- **The data is realistic sample data:** the Q4 training week, Wednesday 11 Nov at 12:10. Monday and Tuesday were logged under target, so today's target has been raised by 200 kcal.
+- **Taken from the web build, not the iPhone,** with `npm run screenshots` (`scripts/screenshots.mjs`): a throwaway local PocketBase, the Q4 schedule and a small sample library, and a fixed clock. Screenshots are 390 pt wide at 2×.
+- **On the iPhone the tab bar is at the bottom** as the native iOS bar, and the toast floats just above it. On web the tab bar is a pill at the top.
+- **Headers on the iPhone are native and translucent,** and the serif is New York (Georgia on web).
+- **The `-full` images show the whole scrolled content** of a screen; the others show the first screen as seen on the phone.
+- **The data:** Wednesday 11 Nov at 12:10 in the Q4 training week. Monday and Tuesday were logged under target, so today's target has been raised. Breakfast is confirmed and the pre-lunch snack is due.
 
 | File | Screen and state |
 |---|---|
-| `00-original-mockup-today.png`, `-week`, `-schedules` | The original clickable mockup from the design phase, for comparing intent with what was built. |
+| `00-original-mockup-today.png`, `-week`, `-schedules` | The original clickable mockup from the design phase. |
 | `01-login.png` | Sign in. Accounts are created by the owner on the server; there is no signup. |
-| `02-today.png` | **Today, first screen at midday.** Breakfast confirmed, snack due, correction line under the target. |
-| `03-today-full.png` | Today, the whole screen: kcal and macro bars, "Left for dinner" card, slot list with statuses and "Ate as planned" buttons, tomorrow preview. |
-| `04-log-planned-meal.png` | Opening a planned meal (Lunch) to confirm or adjust it. |
-| `05-log-planned-meal-adjusted.png` | Same, with the quantity changed to 1.2×: the button becomes "Save what I ate". |
-| `06-log-open-dinner-empty.png` | Opening the open dinner slot: what is left for the meal. |
-| `07-picker-meals.png` | The library picker sheet (Meals tab). |
-| `08-log-open-dinner-filled.png` | Dinner with a family meal added: what is left today after it. |
-| `09-today-previous-day.png` | Yesterday, finished: all confirmed, lunch adjusted. |
-| `10-week.png`, `11-week-full.png` | **Week:** balance so far, microcycle goal, each day's plan → corrected target with eaten and expected bars, body weight used and its history. |
-| `12-library-foods.png`, `13-library-meals.png` | Library lists with search and counts. |
-| `14-food-new-kcal-hint.png` | New food, with the hint that the macros add up to a different kcal. |
-| `15-meal-edit.png` | Meal builder: foods × quantity with a live total. |
-| `16-schedules-list.png` | Schedules with labels; the active one first. |
-| `17-schedule-editor-deficit.png` | **Schedule editor** for "Spring cut": −3,500 deficit, Tuesday at maintenance, per-day preview, floor warning, actions. |
-| `18-day-editor.png` | **Day editor:** kcal target, derived macros with steppers, slots with what the planned meals leave. |
-| `19-day-editor-imbalance.png` | Day editor after stepping carbs up: the surplus notice, and saving blocked until accepted or rebalanced. |
-| `20-slot-editor.png` | Slot editor: name, time, planned/open, reminder toggle, items. |
-| `21-settings.png` | Settings: macro targets and floors, correction limit, fallback weight, reminder times, account. (The Notifications and Apple Health cards only show on iOS.) |
-| `22-today-offline.png` | Today while offline, after confirming a meal: the offline banner and the change counted. |
-| `23-library-no-match.png` | Library search with no results. |
-| `24-dark-today.png`, `25-dark-week.png`, `26-dark-day-editor.png` | Dark mode. |
+| `02-today.png` | **Today, first screen at midday:** the snack ready to log, what is available after the planned meals. |
+| `03-today-full.png` | Today, the whole screen: the day's slots and the preview of tomorrow. |
+| `04-today-day-details.png` | Day details open: macro bars, the target correction and the projection. |
+| `05-log-planned-meal.png` | Opening a planned meal (Lunch) to confirm or adjust it. |
+| `06-log-open-dinner.png` | Opening the open dinner slot: what is available for it. |
+| `07-picker.png` | The library picker: Meals, Foods, "Enter macros directly" and "Create a new food". |
+| `08-log-food-new.png` | "+ Log food": a new unplanned slot with a name and time. |
+| `09-quick-entry.png` | Entering a café bun by its calories and macros, with the optional save to the library. |
+| `10-today-unplanned.png` | After logging it: a "Fika" row at 10:42 marked Unplanned, less available, and the toast with Undo. |
+| `11-log-unplanned.png` | Opening the unplanned slot: name, time, items, Save and Remove. |
+| `12-today-over.png` | Evening, after a large dinner: "877 kcal over target" in words, Day details open, two meals to confirm. |
+| `13-today-offline.png` | Offline after confirming the snack: the banner says the change is saved on the phone. |
+| `14-today-previous-day.png` | Yesterday, finished. |
+| `15-week.png` | **Week:** balance so far, microcycle goal, each day's plan → corrected target with eaten and expected bars, body weight. Restyled only; its redesign is still to come. |
+| `16-library-meals.png`, `17-library-foods.png` | Library on Meals and Foods. |
+| `18-library-no-match.png` | A search with no match, offering to create the food. |
+| `19-meal-edit.png` | Meal builder: foods × quantity with a live total. |
+| `20-food-new.png`, `21-food-new-hint.png` | New food, empty and with the hint that the macros add up to a different kcal. |
+| `22-schedules.png` | Schedules with the active one marked. |
+| `23-schedule-editor.png` | Schedule editor. Restyled only; its redesign is still to come. |
+| `24-day-editor.png` | Day editor: kcal target, macro steppers, slots. |
+| `25-slot-editor.png` | Slot editor: name, time, planned or open, reminder, items. |
+| `26-settings.png` | Settings. (The Notifications and Apple Health cards only show on iOS.) |
+| `27`–`34` `-dark-` | Dark mode: Today, Day details, Week, dinner, a new unplanned slot, Library, day editor, sign in. |
 
 **Not captured** (iOS only):
 - the notification with its "Ate as planned" and "Adjust" buttons
 - the Apple Health permission sheet
-- the native tab bar and headers
+- the native tab bar and headers, the app icon and the splash screen
 
 ## Known issues and open questions
 
-These are the build team's own observations, to start the review:
+The list from the first review round is resolved by the redesign: the next action is on the first screen, there is one button per action, numbers have one format, the explanatory sentences are gone, the identity is no longer a default form app, and state is a word on every row. What remains:
 
-1. **Today is long.** The summary card, dinner card and five slots need about two screens. The most frequent action, confirming the next meal, sits below the fold.
-2. **Too many full-width buttons.** "Ate as planned" appears on every pending slot. Several full-width amber and white buttons compete for attention.
-3. **Dense numbers.** The macro bars carry "105 eaten · 332 planned · 638 g", and macros appear in three formats (MacroLine, tiles, bar labels).
-4. **Explanatory sentences everywhere.** Copy like "Solid: eaten. Light: still planned. Line: target." and "It is set when that day starts." explains the UI instead of the UI explaining itself.
-5. **The Week screen** shows two rows of numbers per day. "Plan → corrected" works, but the balance and the per-day effect could be more visual.
-6. **The schedule editor is very long** (`17`), mixing schedule settings, the deficit spread, the day list and destructive actions on one scroll.
-7. **Form screens.** The first field needed extra room under the translucent header; the spacing is a fixed value.
-8. **Status chips** (CONFIRMED, UNCONFIRMED, PLANNED, OPEN) are small uppercase text. Is colour plus a word the right way to show state?
-9. **Previous day / Today navigation** is a pair of buttons at the top of Today. Would a date control or swipe be better?
-10. **The visual identity is plain.** It is close to a default iOS form app. The mockup had more character, such as condensed numerals for the big figures.
+1. **Week** still shows two rows of numbers per day. It has the new colours, but the balance and each day's effect could be more visual. Due its own design round.
+2. **The schedule editor is still long,** mixing settings, the deficit spread, the day list and destructive actions on one scroll. Due its own design round.
+3. **Device checks the web build can't make:** native tab bar and headers with the new tint, New York rendering, Dynamic Type at the largest sizes, VoiceOver labels, the picker and quick-entry sheets with the keyboard open, and the app icon at small sizes.
+4. **Library sorting** by recent or frequent use is not built; lists are sorted by name.
+5. **Day navigation** is a pair of arrows under the title. Swiping between days was considered and not built.

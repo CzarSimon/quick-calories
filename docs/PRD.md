@@ -55,9 +55,11 @@ Kcal is primary; macros derive from it, using **body weight (BW)** = average of 
 - Confirm screen per slot: confirm as planned, change quantities, remove items, add items from library, skip.
 - Unconfirmed slots **stay pending**: they count toward *projected* but not *consumed*. Evening/next-morning nudge to resolve pending items, with bulk-confirm.
 - Open slots (dinner): show **remaining budget** = target − (consumed + still-planned) for kcal and each macro; logging = pick Food/Meal(s) from library or create a new one inline (then saved to library).
+- **Unplanned eating**: something eaten outside a planned slot (a fika at 10:42) is logged from Today as its own timed row, marked "Unplanned", in time order between the planned slots. It counts as eaten straight away and reduces what is available for the rest of the day. Its name and time can be changed, and it can be removed. Works offline.
+- **One-off dishes**: a meal that will not be eaten again (a restaurant dish) can be logged by typing its calories and macros, without creating a library item first. Saving it to the library, as one serving, is optional.
 
 ## 7. Views
-- **Today**: kcal + C/P/F bars showing consumed, projected (consumed + pending/planned), and target; budget for open slots; list of slots with status.
+- **Today**: the next meal to confirm first; what is still available today after everything eaten and still planned (kcal and C/P/F), with consumed, projected and target in a bar and the detail behind a disclosure; list of slots, unplanned ones included, with status.
 - **Week**: per-day target (original + redistributed) vs actual, running balance vs weekly goal, unrecovered balance, BW used this week.
 - **Library**: foods and meals; search; create/edit; recently/frequently used.
 - **Schedules**: list with labels and active marker; edit day plans and slots; duplicate; delete; switch active.
@@ -83,6 +85,9 @@ Kcal is primary; macros derive from it, using **body weight (BW)** = average of 
 | Targets | Kcal first; protein (2.0 / 1.6 g/kg defaults) and fat (0.8 g/kg target = floor) from settings; carbs fill the rest; manual macro edits that break the kcal target require explicit acceptance. |
 | Body weight | Read from Apple Health; previous microcycle's average, locked for the current cycle; no in-app weight logging. |
 | Unconfirmed slots | Stay pending; counted as projected, not consumed; nudge + bulk confirm. |
+| Unplanned eating | One timed row per item ("Unplanned"), not a single bucket for the day. A log slot without a plan slot; no schema change. |
+| One-off dishes | Typed in by macros; saving to the library is optional and creates a serving-based food. |
+| Visual design | Fieldnotes direction with the Quick Q mark (`docs/design-directions/`), adopted per `docs/plans/fieldnotes-and-unplanned.md`. |
 | Platform | iOS only for now. |
 | Microcycle | Configurable length/anchor in data model and settings; no UI in v1; non-7-day cycles use "Day 1 … Day N". |
 
