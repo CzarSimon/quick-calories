@@ -286,7 +286,9 @@ async function main() {
     await logEarlierDays(page, base);
     await goto(page, base, "/", WED());
     // Breakfast on Wednesday was eaten as planned.
-    await byTestId(page, "confirm-next").or(byTestId(page, "confirm-Breakfast")).first().click();
+    await byTestId(page, "slot-Breakfast").click();
+    await settle(page);
+    await byTestId(page, "log-save").click();
     await settle(page);
     const state = await setup.storageState();
     await setup.close();

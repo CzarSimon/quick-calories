@@ -17,10 +17,11 @@ import { useTheme } from '@/hooks/use-theme';
 import { formatKcal, formatNumber } from '@/lib/format';
 
 /** A bounded surface. Used sparingly: for the current action and for forms, not to box every list. */
-export function Card({ children, style, tone = 'element' }: { children: ReactNode; style?: StyleProp<ViewStyle>; tone?: 'element' | 'selected' }) {
+export function Card({ children, style, tone = 'element', testID }: { children: ReactNode; style?: StyleProp<ViewStyle>; tone?: 'element' | 'selected'; testID?: string }) {
   const colors = useTheme();
   return (
     <View
+      testID={testID}
       style={[
         styles.card,
         tone === 'selected' ? { backgroundColor: colors.backgroundSelected } : { backgroundColor: colors.backgroundElement, borderColor: colors.line, borderWidth: StyleSheet.hairlineWidth },
@@ -256,6 +257,12 @@ export function NutritionSummary({ nutrition, title, testID }: { nutrition: Nutr
   );
 }
 
+/** A hairline between sections. */
+export function Divider() {
+  const colors = useTheme();
+  return <View style={[styles.divider, { backgroundColor: colors.line }]} />;
+}
+
 /** A heading for a block of content, with an optional action or note on the right. */
 export function SectionHeader({ title, right }: { title: string; right?: ReactNode }) {
   return (
@@ -442,6 +449,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, minHeight: 36, justifyContent: 'center', minWidth: 48, alignItems: 'center' },
   notice: { borderRadius: Radius.medium, padding: 12, gap: Spacing.two },
+  divider: { height: StyleSheet.hairlineWidth },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, minHeight: 44 },
   row: {
     flexDirection: 'row',
