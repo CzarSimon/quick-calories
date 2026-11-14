@@ -276,6 +276,19 @@ const SCENES = [
     },
   },
   { name: "food-new", run: async (page, base) => goto(page, base, "/food/new", WED()) },
+  {
+    name: "food-new-hint",
+    run: async (page, base) => {
+      await goto(page, base, "/food/new", WED());
+      await page.getByLabel("Name", { exact: true }).fill("Oats");
+      await page.getByLabel("Calories", { exact: true }).fill("300");
+      await page.getByLabel("Carbs", { exact: true }).fill("60");
+      await page.getByLabel("Protein", { exact: true }).fill("13");
+      await page.getByLabel("Fat", { exact: true }).fill("7");
+      await page.getByLabel("Fat", { exact: true }).blur();
+      await sleep(200);
+    },
+  },
   { name: "schedules", run: async (page, base) => goto(page, base, "/schedules", WED()) },
   {
     name: "schedule-editor",
@@ -297,9 +310,33 @@ const SCENES = [
       await settle(page);
     },
   },
+  {
+    name: "slot-editor",
+    full: true,
+    run: async (page, base) => {
+      await goto(page, base, "/schedules", WED());
+      await page.getByText("Q4 training").locator("visible=true").first().click();
+      await settle(page);
+      await page.getByText("Wed", { exact: true }).locator("visible=true").first().click();
+      await settle(page);
+      await page.getByText("Pre-lunch snack", { exact: true }).locator("visible=true").first().click();
+      await settle(page);
+    },
+  },
   { name: "settings", full: true, run: async (page, base) => goto(page, base, "/settings", WED()) },
   { name: "login", signedOut: true, run: async (page, base) => goto(page, base, "/login", WED()) },
   // The scenes below change data on the server, so they come last.
+  {
+    name: "today-offline",
+    changes: true,
+    run: async (page, base) => {
+      await goto(page, base, "/", WED());
+      await page.context().setOffline(true);
+      await byTestId(page, "confirm-next").click();
+      // Long enough for the offline banner to appear, short enough that the toast is still shown.
+      await sleep(2500);
+    },
+  },
   {
     name: "log-food-new",
     run: async (page, base) => {
