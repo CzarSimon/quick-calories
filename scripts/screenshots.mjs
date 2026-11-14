@@ -216,7 +216,7 @@ async function logEarlierDays(page, base) {
 }
 
 // Each scene leaves the app where it found it, or is marked `changes`.
-const DARK = new Set(["today", "week", "log-open-dinner", "library-meals", "log-food-new", "today-day-details"]);
+const DARK = new Set(["login", "day-editor", "today", "week", "log-open-dinner", "library-meals", "log-food-new", "today-day-details"]);
 const WED = (time = "12:10") => at("11", time);
 const SCENES = [
   {
@@ -286,7 +286,19 @@ const SCENES = [
       await settle(page);
     },
   },
+  {
+    name: "day-editor",
+    full: true,
+    run: async (page, base) => {
+      await goto(page, base, "/schedules", WED());
+      await page.getByText("Q4 training").locator("visible=true").first().click();
+      await settle(page);
+      await page.getByText("Wed", { exact: true }).locator("visible=true").first().click();
+      await settle(page);
+    },
+  },
   { name: "settings", full: true, run: async (page, base) => goto(page, base, "/settings", WED()) },
+  { name: "login", signedOut: true, run: async (page, base) => goto(page, base, "/login", WED()) },
   // The scenes below change data on the server, so they come last.
   {
     name: "log-food-new",
@@ -568,7 +580,7 @@ async function main() {
           viewport: { width: 390, height: scene.full ? 2000 : 844 },
           deviceScaleFactor: SCALE,
           colorScheme: scheme,
-          storageState: state,
+          storageState: scene.signedOut ? undefined : state,
         });
         const shot = await context.newPage();
         const errors = [];
